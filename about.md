@@ -26,7 +26,7 @@ The end result is an reasonably accurate but incomplete record of all the playli
 
 The code used for scraping,cleaning and analyzing is available at https://github.com/apsteinmetz/wfmu.
 
-The code for this web app is at https://github.com/apsteinmetz/wfmu_shiny.
+The code for this web app is at https://github.com/apsteinmetz/wfmu_explorer.git.
 
 Thanks to station manager, Ken Freedman, for giving me permission to scrape the site.
 
