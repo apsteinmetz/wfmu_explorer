@@ -223,6 +223,33 @@ shinyUI(
                                    
                                  )
                                  
+                        ),
+                        # --------------- TEST --------------------
+                        tabPanel("Test Single Artist",
+                                 titlePanel("Artists Plays by DJ Over Time"),
+                                 sidebarLayout(
+                                   # Sidebar with a slider and selection inputs
+                                   sidebarPanel(
+                                     h4('1) Type a few letters of the artist name then click "Find Artists."'),
+                                     fluidRow(
+                                       h4('4) Change threshold to show DJ?'),
+                                       selectizeInput("artist_selection", h4("Select Artist"),
+                                                   choices = all_artisttokens,
+                                                   multiple = TRUE,
+                                                   options = list(placeholder = 'select artist(s)')
+                                       )
+                                     )
+                                     ),
+                                   
+                                   mainPanel(
+                                     fluidRow(
+                                       h4('Artist Plays per Quarter'),
+#                                       plotOutput("artist_history_plot"),
+                                       h4('Songs Played of this Artist')
+#                                       tableOutput('top_songs_for_artist')
+                                     )
+                                   )
+                                 )
                         )
              ),
              # --------- Songs/ ----------------------------------

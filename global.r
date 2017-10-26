@@ -47,5 +47,11 @@ LastShow<-playlists %>%
 DJKey <- DJKey %>% 
   left_join(FirstShow,by="DJ") %>% 
   left_join(LastShow,by="DJ")
+
+all_artisttokens<-playlists %>% 
+  select(ArtistToken) %>% 
+  unique() %>% 
+  arrange(ArtistToken) %>% 
+  pull(ArtistToken)
 #cleanup
 rm(LastShow,FirstShow)
