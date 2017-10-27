@@ -220,7 +220,7 @@ top_songs_for_artist<-memoise(function(artist_token,years_range){
 
 # ----------------- Define server logic ----------
 
-shinyServer(function(input, output) {
+shinyServer(function(input, output,session) {
   # ------------------ STATION TAB -----------------
   top_artists_reactive<-reactive({
     input$update
@@ -493,6 +493,11 @@ shinyServer(function(input, output) {
     gg<-gg+scale_x_continuous()
     gg
   })
+  # ---------------- TEST ARTIST ----------------------
+   updateSelectizeInput( session=session,
+                        inputId = "artist_selection_test", 
+                        choices = c(Choose = '', all_artisttokens), 
+                        server = TRUE)
   # ------------------ SONG TAB -----------------
   
   

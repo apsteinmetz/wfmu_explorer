@@ -1,6 +1,7 @@
 library(rmarkdown)
 library(lubridate)
 library(dplyr)
+library(data.table)
 
 #setwd(paste0(getwd(),"/wfmu_explorer"))
 
@@ -48,10 +49,11 @@ DJKey <- DJKey %>%
   left_join(FirstShow,by="DJ") %>% 
   left_join(LastShow,by="DJ")
 
-all_artisttokens<-playlists %>% 
-  select(ArtistToken) %>% 
-  unique() %>% 
-  arrange(ArtistToken) %>% 
-  pull(ArtistToken)
+all_artisttokens<-playlists %>%
+  select(ArtistToken) %>%
+  unique() %>%
+  arrange(ArtistToken)
+
+#all_artisttokens<-all_artisttokens[100:200]
 #cleanup
 rm(LastShow,FirstShow)
