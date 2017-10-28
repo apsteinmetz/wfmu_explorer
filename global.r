@@ -52,7 +52,8 @@ DJKey <- DJKey %>%
 all_artisttokens<-playlists %>%
   select(ArtistToken) %>%
   unique() %>%
-  arrange(ArtistToken)
+  arrange(ArtistToken) %>% 
+  pull(ArtistToken)
 
 #all_artisttokens<-all_artisttokens[100:200]
 #cleanup

@@ -494,11 +494,49 @@ shinyServer(function(input, output,session) {
     gg
   })
   # ---------------- TEST ARTIST ----------------------
-   updateSelectizeInput( session=session,
+  reactive_artists_3<-reactive({
+    input$artist_update_3
+    isolate({      
+      withProgress({
+        setProgress(message = "Processing...")
+        ret_val<-playlists %>%
+          ungroup() %>%
+          filter(grepl(str_to_title(input$artist_letters),ArtistToken)) %>% 
+          select(ArtistToken) %>%
+          distinct() %>%
+          arrange(ArtistToken) %>%
+          pull(ArtistToken)
+      })
+    })
+    return(ret_val)
+  })
+  updateSelectizeInput( session=session,
                         inputId = "artist_selection_test", 
-                        choices = c(Choose = '', all_artisttokens), 
+                        choices = all_artisttokens, 
                         server = TRUE)
-  # ------------------ SONG TAB -----------------
+  process_artists_3<-function(){
+    withProgress({
+      setProgress(message = "Processing...")
+      ret_val<-play_count_by_DJ(input$artist_selection_test,
+                                input$artist_years_range_3,
+                                input$artist_all_other_3)
+    })
+    return(ret_val)
+  }
+  
+  output$artist_history_plot_3 <- renderPlot({
+    artist_history<-process_artists_3()
+    gg<-artist_history %>% ggplot(aes(x=AirDate,y=Spins,fill=ShowName))+geom_col()
+    gg<-gg+labs(title=paste("Number of",input$artist_selection_test,"plays every quarter by DJ"),
+                caption=HOST_URL)
+    gg<-gg+scale_x_continuous()
+    gg
+  })
+  output$top_songs_for_artist_3<-renderTable({
+    top_songs_for_artist(input$artist_selection_test,input$artist_years_range)
+  })
+  
+    # ------------------ SONG TAB -----------------
   
   
 })

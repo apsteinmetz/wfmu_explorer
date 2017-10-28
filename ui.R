@@ -230,23 +230,34 @@ shinyUI(
                                    sidebarLayout(
                                      # Sidebar with a slider and selection inputs
                                      sidebarPanel(
-                                       h4('1) Type a few letters of the artist name then click "Find Artists."'),
                                        fluidRow(
-                                         h4('4) Change threshold to show DJ?'),
-                                         selectizeInput("artist_selection_test", h4("Select Artist"),
+                                         selectizeInput("artist_selection_test", h4("Select one or more artists"),
                                                         choices = NULL,
                                                         multiple = TRUE,
                                                         options = list(placeholder = 'select artist(s)')
-                                         )
+                                         ),
+                                         h4('3) Change the date range?'),
+                                         sliderInput("artist_years_range_3",
+                                                     "Year Range:",
+                                                     min = min_year,
+                                                     max = year(Sys.Date()),
+                                                     sep = "",
+                                                     value = c(2002,year(Sys.Date()))),
+                                          h4('4) Change threshold to show DJ?'),
+                                          selectInput("artist_all_other_3",
+                                                       "Threshold of Minimum Plays to show DJ",
+                                                       selected = 3,
+                                                       choices=1:9)
                                        )
+                                       
                                      ),
-
                                      mainPanel(
                                        fluidRow(
                                          h4('Artist Plays per Quarter'),
-                                         #                                       plotOutput("artist_history_plot"),
-                                         h4('Songs Played of this Artist')
-                                         #                                       tableOutput('top_songs_for_artist')
+                                         textOutput("chosen"),
+                                         plotOutput("artist_history_plot_3"),
+                                         h4('Songs Played of this Artist'),
+                                         tableOutput('top_songs_for_artist_3')
                                        )
                                      )
                                    )
