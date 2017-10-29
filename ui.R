@@ -111,7 +111,7 @@ shinyUI(
                                  titlePanel("Compare Two DJs"),
                                  fluidRow(
                                    column(4,
-                                          selectInput("show_selection_3", "Show Name:",
+                                          selectInput("show_selection_1DJ", "Show Name:",
                                                       choices = DJKey$ShowName,
                                                       selected = 'Teenage Wasteland')
                                    ),
@@ -152,40 +152,38 @@ shinyUI(
                                  sidebarLayout(
                                    # Sidebar with a slider and selection inputs
                                    sidebarPanel(
-                                     h4('1) Type a few letters of the artist name then click "Find Artists."'),
-                                     h5('     Type no more than one word in the artist name.'),
-                                     h5('     Check the word cloud on the first page for iconic band abbreviations in use. "Stones" will find The Rolling Stones'),
-                                     textInput("artist_letters", label = h4("Give me a clue!"), value = "Abba"),
-                                     actionButton("artist_update_1","Find Artists"),
-                                     h4('2) Click below to choose the specific artist. Beware of misspellings!'),
-                                     h5('You can select more than one - use for variations in spelling.'),
-                                     uiOutput('SelectArtist'),
-                                     h4('3) Change the date range?'),
-                                     sliderInput("artist_years_range",
-                                                 "Year Range:",
-                                                 min = min_year,
-                                                 max = year(Sys.Date()),
-                                                 sep = "",
-                                                 value = c(2002,year(Sys.Date()))),
                                      fluidRow(
-                                       h4('4) Change threshold to show DJ?'),
-                                       selectInput("artist_all_other",
+                                       selectizeInput("artist_selection_1DJ", h4("Select one or more artists"),
+                                                      choices = NULL,
+                                                      multiple = TRUE,
+                                                      options = list(placeholder = 'select artist(s)')
+                                       ),
+                                       h4('Change the date range to include?'),
+                                       sliderInput("artist_years_range_1DJ",
+                                                   "Year Range:",
+                                                   min = min_year,
+                                                   max = year(Sys.Date()),
+                                                   sep = "",
+                                                   value = c(2002,year(Sys.Date()))),
+                                       h4('Change threshold to show DJ name?'),
+                                       selectInput("artist_all_other_1DJ",
                                                    "Threshold of Minimum Plays to show DJ",
                                                    selected = 3,
                                                    choices=1:9)
                                      )
+                                     
                                    ),
-                                   
                                    mainPanel(
                                      fluidRow(
                                        h4('Artist Plays per Quarter'),
-                                       plotOutput("artist_history_plot"),
+                                       textOutput("chosen"),
+                                       plotOutput("artist_history_plot_1DJ"),
                                        h4('Songs Played of this Artist'),
-                                       tableOutput('top_songs_for_artist')
+                                       tableOutput('top_songs_for_artist_1DJ')
                                      )
                                    )
                                  )
-                        ) ,
+                        ),
                         # --------------------- multi Artist ---------------
                         tabPanel("Multi Artist",
                                  titlePanel("Artists Plays Over Time"),
@@ -223,45 +221,8 @@ shinyUI(
                                    
                                  )
                                  
-                        ) ,
+                        )
  #                       --------------- TEST --------------------
-                          tabPanel("Test Single Artist",
-                                   titlePanel("Artists Plays by DJ Over Time"),
-                                   sidebarLayout(
-                                     # Sidebar with a slider and selection inputs
-                                     sidebarPanel(
-                                       fluidRow(
-                                         selectizeInput("artist_selection_test", h4("Select one or more artists"),
-                                                        choices = NULL,
-                                                        multiple = TRUE,
-                                                        options = list(placeholder = 'select artist(s)')
-                                         ),
-                                         h4('3) Change the date range?'),
-                                         sliderInput("artist_years_range_3",
-                                                     "Year Range:",
-                                                     min = min_year,
-                                                     max = year(Sys.Date()),
-                                                     sep = "",
-                                                     value = c(2002,year(Sys.Date()))),
-                                          h4('4) Change threshold to show DJ?'),
-                                          selectInput("artist_all_other_3",
-                                                       "Threshold of Minimum Plays to show DJ",
-                                                       selected = 3,
-                                                       choices=1:9)
-                                       )
-                                       
-                                     ),
-                                     mainPanel(
-                                       fluidRow(
-                                         h4('Artist Plays per Quarter'),
-                                         textOutput("chosen"),
-                                         plotOutput("artist_history_plot_3"),
-                                         h4('Songs Played of this Artist'),
-                                         tableOutput('top_songs_for_artist_3')
-                                       )
-                                     )
-                                   )
-                          )
              ),
              # --------- Songs/ ----------------------------------
              # tabPanel("Songs",
