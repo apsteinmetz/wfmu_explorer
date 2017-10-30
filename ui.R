@@ -25,11 +25,13 @@ shinyUI(
                           selectInput("selection", "Are the DJs On Current Schedule?:",
                                       choices = c('ALL','YES','NO')),
                           h4('Be aware a wide date range could take many seconds to process.'),
-                          sliderInput("years_range",
+                          sliderInput("years_range_1",
                                       "Year Range:",
                                       min = min_year,
                                       max = year(Sys.Date()),
                                       sep = "",
+                                      step=1,
+                                      round= TRUE,
                                       value = c(year(Sys.Date())-3,year(Sys.Date()))),
                           actionButton("update","Update")
                           , textOutput("text_song_count")
@@ -164,6 +166,8 @@ shinyUI(
                                                    min = min_year,
                                                    max = year(Sys.Date()),
                                                    sep = "",
+                                                   step=1,
+                                                   round=TRUE,
                                                    value = c(2002,year(Sys.Date()))),
                                        h4('Change threshold to show DJ name?'),
                                        selectInput("artist_all_other_1DJ",
@@ -204,6 +208,8 @@ shinyUI(
                                                  min = min_year,
                                                  max = year(Sys.Date()),
                                                  sep = "",
+                                                 step=1,
+                                                 round=TRUE,
                                                  value = c(2005,year(Sys.Date()))),
                                      actionButton("artist_update_2",
                                                   "Find Artists")
@@ -222,7 +228,6 @@ shinyUI(
                                  )
                                  
                         )
- #                       --------------- TEST --------------------
              ),
              # --------- Songs/ ----------------------------------
              # tabPanel("Songs",

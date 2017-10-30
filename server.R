@@ -25,6 +25,7 @@ HOST_URL<- "wfmu.servebeer.com"
 
 # ----------------- STUFF FOR STATION TAB -----------------------------
 get_top_artists<-memoise(function(onAir,years_range) {
+  years_range <- c(round(years_range[1]),round(years_range[2]))
   if (onAir=='ALL') {
     DJ_set <-DJKey %>% 
       select(DJ)
@@ -47,6 +48,7 @@ get_top_artists<-memoise(function(onAir,years_range) {
 })
 
 get_top_songs<-memoise(function(onAir='ALL',years_range) {
+  years_range <- c(round(years_range[1]),round(years_range[2]))
   if (onAir=='ALL') {
     DJ_set <-playlists
   } else {
@@ -71,6 +73,7 @@ get_top_songs<-memoise(function(onAir='ALL',years_range) {
 })
 # ----------------- STUFF FOR DJ TAB -----------------------------
 get_top_artists_DJ<-memoise(function(dj,years_range) {
+  years_range <- c(round(years_range[1]),round(years_range[2]))
   top_artists<-playlists %>%
     ungroup() %>% 
     filter(DJ==dj) %>% 
@@ -84,6 +87,7 @@ get_top_artists_DJ<-memoise(function(dj,years_range) {
 })
 
 get_top_songs_DJ<-memoise(function(dj,years_range) {
+  years_range <- c(round(years_range[1]),round(years_range[2]))
   top_songs<-playlists %>% 
     ungroup() %>% 
     filter(DJ==dj) %>% 
@@ -158,6 +162,7 @@ songs_in_common<-memoise(function(dj1,dj2){
 
 # ----------------- STUFF FOR SINGLE ARTIST TAB -----------------------------
 play_count_by_DJ<-memoise(function(artist_token,years_range,threshold=3){
+  years_range <- c(round(years_range[1]),round(years_range[2]))
   pc<- playlists %>% 
     ungroup() %>% 
     filter(AirDate>=as.Date(paste0(years_range[1],"-1-1"))) %>%  
@@ -192,6 +197,7 @@ play_count_by_DJ<-memoise(function(artist_token,years_range,threshold=3){
 play_count_by_artist<-memoise(function(artist_tokens,years_range=c(2012,2015)){
   pc<- playlists %>% 
     ungroup() %>% 
+    years_range <- c(round(years_range[1]),round(years_range[2]))
     filter(AirDate>=as.Date(paste0(years_range[1],"-1-1"))) %>%  
     filter(AirDate<=as.Date(paste0(years_range[2],"-12-31"))) %>%  
     filter(ArtistToken %in% artist_tokens) %>% 
@@ -204,6 +210,7 @@ play_count_by_artist<-memoise(function(artist_tokens,years_range=c(2012,2015)){
 })
 
 top_songs_for_artist<-memoise(function(artist_token,years_range=c(2012,2015)){
+  years_range <- c(round(years_range[1]),round(years_range[2]))
   ts<-playlists %>% 
     filter(ArtistToken %in% artist_token) %>% 
     filter(AirDate>=as.Date(paste0(years_range[1],"-1-1"))) %>%  
@@ -227,7 +234,7 @@ shinyServer(function(input, output,session) {
     isolate({      
       withProgress({
         setProgress(message = "Processing Artists...")
-        ret_val<-get_top_artists(input$selection,input$years_range)
+        ret_val<-get_top_artists(input$selection,input$years_range_1)
       })
     })
     return(ret_val)
@@ -237,7 +244,7 @@ shinyServer(function(input, output,session) {
     isolate({      
       withProgress({
         setProgress(message = "Processing Songs...")
-        ret_val<-get_top_songs(input$selection,input$years_range)
+        ret_val<-get_top_songs(input$selection,input$years_range_1)
       })
     })
     return(ret_val)
@@ -277,6 +284,8 @@ shinyServer(function(input, output,session) {
                 min = filter(DJKey,ShowName==input$show_selection) %>% pull(FirstShow) %>% year(),
                 max = filter(DJKey,ShowName==input$show_selection) %>% pull(LastShow) %>% year(),
                 sep = "",
+                step=1,
+                round = TRUE,
                 value = c(min,max)
     )
     
@@ -289,30 +298,14 @@ shinyServer(function(input, output,session) {
       if (is.null(input$DJ_years_range)) {
         years_range<-c(1982,year(Sys.Date()))
       } else{
-        years_range <- input$DJ_years_range
+        # bug? when slider is on server side round option doesn't work
+        years_range <- c(round(input$DJ_years_range[1]),round(input$DJ_years_range[2]))
+
       }
       ret_val<-get_top_artists_DJ(DJ,years_range)
     })
     return(ret_val)
   }
-  
-  # top_artists_reactive_DJ<-reactive({
-  #   input$DJ_update
-  #   isolate({      
-  #     withProgress({
-  #       setProgress(message = "Processing Artitsts...")
-  #       DJ<-filter(DJKey,ShowName==input$show_selection) %>% pull(DJ)
-  #       if (is.null(input$DJ_years_range)) {
-  #         years_range<-c(1982,year(Sys.Date()))
-  #       } else{
-  #         years_range <- input$DJ_years_range
-  #       }
-  #       ret_val<-get_top_artists_DJ(DJ,years_range)
-  #     })
-  #   })
-  #   return(ret_val)
-  # })
-  # 
   top_songs_process_DJ<-function(){
     withProgress({
       setProgress(message = "Processing Songs...")
@@ -320,29 +313,13 @@ shinyServer(function(input, output,session) {
       if (is.null(input$DJ_years_range)) {
         years_range<-c(1982,year(Sys.Date()))
       } else{
-        years_range <- input$DJ_years_range
+        years_range <- c(round(input$DJ_years_range[1]),round(input$DJ_years_range[2]))
       }
       ret_val<-get_top_songs_DJ(DJ,years_range)
     })
     return(ret_val)
   }
-  # top_songs_reactive_DJ<-reactive({
-  #   input$DJ_update
-  #   isolate({      
-  #     withProgress({
-  #       setProgress(message = "Processing Songs...")
-  #       DJ<-filter(DJKey,ShowName==input$show_selection) %>% pull(DJ)
-  #       if (is.null(input$DJ_years_range)) {
-  #         years_range<-c(1982,year(Sys.Date()))
-  #       } else{
-  #         years_range <- input$DJ_years_range
-  #       }
-  #       ret_val<-get_top_songs_DJ(DJ,years_range)
-  #     })
-  #   })
-  #   return(ret_val)
-  # })
-  # 
+  
   output$DJ_cloud <- renderPlot({
     wordcloud_rep <- repeatable(wordcloud,seed=1234)
     top_artists<-top_artists_process_DJ() 
