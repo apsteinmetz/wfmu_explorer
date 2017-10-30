@@ -38,6 +38,8 @@ WFMU is listener supported!  [PLEDGE HERE!](https://pledge.wfmu.org/donate?step=
 
 -- Art Steinmetz (apsteinmetz@yahoo.com)
 
+*Changes in 0.38:Added display of all variants of artist name included in artist token.
+
 *Changes in 0.37:Redid single artist tab.  Artist selection much streamlined.
 
 *Changes in 0.36: Multi-select on artist tab.  Many artist entries are misspelled.  Ideally, you'll combine variants.  You can now select, say, "DustySpringfield" and "DusySprinfield" if you start your search with "du."  Searching for "el" will let you select "ELO and "ElectricLight" (as in Orchestra).

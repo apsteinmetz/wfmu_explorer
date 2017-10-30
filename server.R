@@ -430,7 +430,12 @@ shinyServer(function(input, output,session) {
   output$top_songs_for_artist_1DJ<-renderTable({
     top_songs_for_artist(input$artist_selection_1DJ,input$artist_years_range_1DJ)
   })
-  
+  output$artist_variants<-renderTable({
+    playlists %>% 
+      filter(ArtistToken %in% input$artist_selection_1DJ) %>% 
+      select(Artist) %>% 
+      unique()
+  })
     #-------------------- multi artist tab -----------------------
   reactive_multi_artists<-reactive({
     input$artist_update_2

@@ -155,6 +155,7 @@ shinyUI(
                                    # Sidebar with a slider and selection inputs
                                    sidebarPanel(
                                      fluidRow(
+                                       h4('Artist names reduced to first two words.'),
                                        selectizeInput("artist_selection_1DJ", h4("Select one or more artists"),
                                                       choices = NULL,
                                                       multiple = TRUE,
@@ -173,7 +174,9 @@ shinyUI(
                                        selectInput("artist_all_other_1DJ",
                                                    "Threshold of Minimum Plays to show DJ",
                                                    selected = 3,
-                                                   choices=1:9)
+                                                   choices=1:9),
+                                       h4('Full artist names included in this token:'),
+                                       tableOutput("artist_variants")
                                      )
                                      
                                    ),
