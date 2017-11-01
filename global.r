@@ -1,7 +1,7 @@
 library(rmarkdown)
 library(lubridate)
 library(dplyr)
-library(data.table)
+#library(data.table)
 
 #setwd(paste0(getwd(),"/wfmu_explorer"))
 

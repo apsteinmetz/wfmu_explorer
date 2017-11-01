@@ -136,7 +136,7 @@ artists_in_common<-memoise(function(dj1,dj2){
     #select(ArtistToken,sum,FaveIndex) %>% 
     top_n(10) %>% 
     select(-sum_x,-sd_x) %>% 
-    arrange(desc(FaveIndex)) %>% 
+    arrange(desc(FaveIndex)) %>%
     select(-FaveIndex)
   artists
 })
@@ -195,9 +195,9 @@ play_count_by_DJ<-memoise(function(artist_token,years_range,threshold=3){
 })
 
 play_count_by_artist<-memoise(function(artist_tokens,years_range=c(2012,2015)){
+  years_range <- c(round(years_range[1]),round(years_range[2]))
   pc<- playlists %>% 
     ungroup() %>% 
-    years_range <- c(round(years_range[1]),round(years_range[2]))
     filter(AirDate>=as.Date(paste0(years_range[1],"-1-1"))) %>%  
     filter(AirDate<=as.Date(paste0(years_range[2],"-12-31"))) %>%  
     filter(ArtistToken %in% artist_tokens) %>% 
