@@ -97,13 +97,12 @@ shinyUI(
                                    # Show Word Cloud
                                    mainPanel(
                                      fluidRow(
-                                       h4('Most Similar Shows Based on Common Artists'),
-                                       tableOutput("DJ_table_similar")
-                                       
-                                     ),
-                                     fluidRow(
                                        h4('DJ Neighborhood') 
                                        , plotOutput("DJ_chord")
+                                     ),
+                                     fluidRow(
+                                       h4('Most Similar Shows Based on Common Artists'),
+                                       tableOutput("DJ_table_similar")
                                      )
                                    )
                                  )
