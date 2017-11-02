@@ -203,7 +203,7 @@ shinyUI(
                                      h5('Given there are nearly 40 thousand artists, a drop down list is impractical.'),
                                      textInput("multi_artists", 
                                                label = h4("Tokens Separated by Spaces"), 
-                                               value = "JustinBeiber Rihanna CharlesManson"),
+                                               value = "JustinBieber Rihanna CharlesManson"),
                                      uiOutput('SelectMultiArtists'),
                                      h4('Change the date range?'),
                                      sliderInput("multi_artist_years_range",
