@@ -225,7 +225,9 @@ shinyUI(
                                        h4('Artist Plays per Year (goth style)'),
                                        plotOutput("multi_artist_history_plot_2",width = "710px",height="355px"),
                                        h4('Yet another way'),
-                                       plotOutput("multi_artist_history_plot_3",width = "710px",height="355px")
+                                       plotOutput("multi_artist_history_plot_3",width = "710px",height="355px"),
+                                       h4("One More. The best way (though not Ken's favorite)."),
+                                       plotOutput("multi_artist_history_plot_4",width = "710px",height="355px")
                                        
                                      )
                                    )
