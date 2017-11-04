@@ -154,7 +154,7 @@ shinyUI(
                                    # Sidebar with a slider and selection inputs
                                    sidebarPanel(
                                      fluidRow(
-                                       h4('Artist names reduced to first two words.'),
+                                       h4('Artist names reduced to token of first two words.'),
                                        selectizeInput("artist_selection_1DJ", h4("Select one or more artists"),
                                                       choices = NULL,
                                                       multiple = TRUE,
@@ -232,9 +232,9 @@ shinyUI(
                         )
              ),
              # --------- Songs/ ----------------------------------
-             # tabPanel("Songs",
-             #          titlePanel("Nothing Here Yet")
-             # ),
+            tabPanel("Songs",
+                      titlePanel("Nothing Here Yet")
+             ),
              # --------- About/ ----------------------------------
              tabPanel("About",
                       mainPanel(
