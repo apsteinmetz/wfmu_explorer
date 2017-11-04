@@ -14,6 +14,7 @@ load('djdtm.RData')
 #load(file=url("https://www.dropbox.com/s/are6e2jx8djvkl4/DJKey.RData?dl=1")) #DJKey
 
 default_song<-"Help"
+default_artist<-'Abba'
 
 #limit DJ list to DJs that are present in playlist file
 DJKey<-DJKey %>% 

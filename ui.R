@@ -157,8 +157,9 @@ shinyUI(
                                        h4('Artist names reduced to token of first two words.'),
                                        selectizeInput("artist_selection_1DJ", h4("Select one or more artists"),
                                                       choices = NULL,
-                                                      multiple = TRUE,
-                                                      options = list(placeholder = 'select artist(s)')
+                                                      multiple = TRUE
+                                                      #selected=default_artist
+                                                      #options = list(placeholder = 'select artist(s)')
                                        ),
                                        h4('Change the date range to include?'),
                                        sliderInput("artist_years_range_1DJ",
@@ -232,9 +233,9 @@ shinyUI(
                         )
              ),
              # --------- Songs/ ----------------------------------
-            navbarMenu("Songs",
+            tabPanel("Songs",
                      #----------- Single Artist -----------------------
-                     tabPanel("Find Songs",
+
                               titlePanel("Find Songs"),
                               sidebarLayout(
                                 # Sidebar with a slider and selection inputs
@@ -266,12 +267,12 @@ shinyUI(
                                   fluidRow(
                                     h4('Song Plays per Quarter'),
                                     plotOutput("song_history_plot"),
-                                    h4('Songs Played of this Title'),
+                                    h4('Most Played Artists for this Song'),
                                     tableOutput('top_artists_for_song')
                                   )
                                 )
                               )
-                     )
+                     
              ),
              # --------- About/ ----------------------------------
              tabPanel("About",

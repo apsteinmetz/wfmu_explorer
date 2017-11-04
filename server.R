@@ -448,7 +448,9 @@ shinyServer(function(input, output,session) {
   updateSelectizeInput( session=session,
                         inputId = "artist_selection_1DJ", 
                         choices = all_artisttokens, 
-                        server = TRUE)
+                        server = TRUE,
+                        selected=default_artist
+                        )
   process_artists_1DJ<-function(){
     withProgress({
       setProgress(message = "Processing...")
@@ -541,7 +543,7 @@ shinyServer(function(input, output,session) {
   
   output$SelectSong<-renderUI({
     song_choices<-reactive_songs_letters()
-    selectInput("song_selection", h5("Select song"),
+    selectizeInput("song_selection", h5("Select song"),
                 choices = song_choices,
                 selected= default_song,
                 multiple = TRUE
