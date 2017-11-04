@@ -1,28 +1,19 @@
 ---
-title: "version: 0.37"
-date: "October 29, 2017"
+title: "WFMU Playlist Explorer"
+version: 0.40
+date: "November 4, 2017"
 output: html_document
 ---
 ![](https://wfmu.org/wp-content/uploads/2016/03/BadgeCourage.png) 
 
-<!-- Global Site Tag (gtag.js) - Google Analytics -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=UA-107406537-1"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments)};
-  gtag('js', new Date());
-
-  gtag('config', 'UA-107406537-1');
-</script>
-
 ## About WFMU Playlist Explorer
-Free form radio, WFMU.ORG, maintains a huge trove of past playlists from many DJ's radio shows.  More recently, web-only programming has been added to this.  This dataset offers lots of opportunities for analysis.  I scraped all the playlists I could from the web site and started asking questions.  The data set is here for your own explorations. It represents over a million plays spanning decades.
+WFMU.ORG, a free-form, listener-supported radio station, maintains a huge trove of past playlists from many DJ's radio shows.  More recently, web-only programming has been added to this.  This dataset offers lots of opportunities for analysis.  I scraped all the playlists I could from the web site and started asking questions.  The data set is here for your own explorations. It represents *over a million plays spanning decades!*
 
-The scraping and data-cleaning process was the most time consuming part of the exercise. Playlist tables are not in a consistent format and my HTML skills are rudimentary.  I cleaned up the raw data to reduce errors and create consistency.  DJ's are inconsistent in how they enter artist names.  There are 12 different ways Andy Breckman can misspell "Bruce Springsteen"  I take a stab at fixing some of the glaring errors. I'm sure I missed many. Additionally, many artist names are variant due to collaborators with "featuring," "and the," "with," etc. in the name.  I condense the first two words of every artist name into a token and drop the rest. In a very few cases the air date is clearly wrong. I strip those shows out.
+The web scraping and data-cleaning process was the most time consuming part of the exercise. Playlist tables are not in a consistent format and my HTML skills are rudimentary.  Some DJs are ommitted entirely because their playlist formats are too weird (working on it, maybe). I cleaned up the raw data to reduce errors and create consistency.  DJ's are inconsistent in how they enter artist names.  There are 12 different ways Andy Breckman can misspell "Bruce Springsteen"  I take a stab at fixing some of the glaring errors. I'm sure I missed many. Additionally, many artist names are variant due to collaborators with "featuring," "and the," "with," etc. in the name.  I condense the first two words of every artist name into an *ArtistToken* and drop the rest. In a very few cases the air date is clearly wrong. I strip those shows out.
 
 There is a final step which is really a judgement call.  Many DJs have signature songs to open and/or close their shows.  Including these skews the play count for songs.  I have chosen to strip those out, or try to.  Songs where one DJ accounts for just about all the plays are stripped out as well.  This is the ultimate data set I use here.
 
-The end result is an reasonably accurate but incomplete record of all the playlists available at WFMU.ORG as of July 2017.  
+The end result is an reasonably accurate but incomplete record of all the playlists available at WFMU.ORG as of September 2017.  
 
 The code used for scraping,cleaning and analyzing is available at https://github.com/apsteinmetz/wfmu.
 
@@ -34,9 +25,13 @@ wfmu.org is powered by KenzoDB ( http://kenzodb.com ) from Ken Garson Systems. N
 
 This site is powered by Shiny by RStudio (https://www.rstudio.com/) and written in the R data science lanugage.
 
-WFMU is listener supported!  [PLEDGE HERE!](https://pledge.wfmu.org/donate?step=landing)
+**WFMU is listener supported!  [PLEDGE HERE!](https://pledge.wfmu.org/donate?step=landing)**
 
 -- Art Steinmetz (apsteinmetz@yahoo.com)
+
+## Change log
+
+*Changes in 0.40: Added song tab to analyze artists and DJs who played a particular song title.
 
 *Changes in 0.38:Added display of all variants of artist name included in artist token.
 
