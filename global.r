@@ -21,7 +21,6 @@ DJKey<-DJKey %>%
   mutate(DJ=as.character(DJ)) %>% 
   semi_join(playlists,by='DJ') %>% 
   arrange(ShowName) %>% 
-  as.tibble() %>% 
   unique()
 
 #add artist with song to get unique songs
