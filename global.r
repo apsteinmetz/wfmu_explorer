@@ -13,6 +13,8 @@ load('djdtm.RData')
 #load(file=url("https://www.dropbox.com/s/zobdwfuc3x1p2h8/playlists.Rdata?dl=1")) #playlists
 #load(file=url("https://www.dropbox.com/s/are6e2jx8djvkl4/DJKey.RData?dl=1")) #DJKey
 
+default_song<-"Help"
+
 #limit DJ list to DJs that are present in playlist file
 DJKey<-DJKey %>% 
   mutate(DJ=as.character(DJ)) %>% 

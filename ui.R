@@ -232,8 +232,46 @@ shinyUI(
                         )
              ),
              # --------- Songs/ ----------------------------------
-            tabPanel("Songs",
-                      titlePanel("Nothing Here Yet")
+            navbarMenu("Songs",
+                     #----------- Single Artist -----------------------
+                     tabPanel("Find Songs",
+                              titlePanel("Find Songs"),
+                              sidebarLayout(
+                                # Sidebar with a slider and selection inputs
+                                sidebarPanel(
+                                  h4('1) Start by narrowing down the list of songs'),
+                                  h4('Type all or part of the song name then click "Find Songs."'),
+                                  textInput("song_letters", label = h4("Give me a clue!"), value = default_song),
+                                  actionButton("song_update_1","Find Songs"),
+                                  h4('2) Click below to choose the specific song(s).'),
+                                  h5('You can select more than one'),
+                                  uiOutput('SelectSong'),
+                                  h4('3) Change the date range?'),
+                                  sliderInput("song_years_range",
+                                              "Year Range:",
+                                              min = min_year,
+                                              max = year(Sys.Date()),
+                                              sep = "",
+                                              value = c(2002,year(Sys.Date()))),
+                                  fluidRow(
+                                    h4('4) Change threshold to show DJ?'),
+                                    selectInput("song_all_other",
+                                                "Threshold of Minimum Plays to show DJ",
+                                                selected = 3,
+                                                choices=1:9)
+                                  )
+                                ),
+                                
+                                mainPanel(
+                                  fluidRow(
+                                    h4('Song Plays per Quarter'),
+                                    plotOutput("song_history_plot"),
+                                    h4('Songs Played of this Title'),
+                                    tableOutput('top_artists_for_song')
+                                  )
+                                )
+                              )
+                     )
              ),
              # --------- About/ ----------------------------------
              tabPanel("About",
