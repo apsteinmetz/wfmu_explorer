@@ -512,6 +512,17 @@ shinyServer(function(input, output,session) {
     gg<-gg+scale_x_continuous()
     gg
   })
+  
+  output$multi_artist_history_plot_3 <- renderPlot({
+    multi_artist_history<-reactive_multi_artists()
+    gg<-multi_artist_history %>% ggplot(aes(x=AirDate,y=Spins,fill=ArtistToken))+geom_col(position='dodge',width=0.4)
+    gg<-gg+labs(title=paste("Annual Plays by Artist"),caption=HOST_URL)
+    #gg<- gg+ theme_economist()
+    gg<-gg+theme_solarized_2(light = FALSE) + scale_colour_solarized("red")
+    gg<-gg+scale_x_continuous()
+    gg
+  })
+  
   # ------------------ SONG TAB -----------------
   reactive_songs_letters<-reactive({
     input$song_update_1

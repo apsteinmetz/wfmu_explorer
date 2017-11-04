@@ -223,7 +223,9 @@ shinyUI(
                                        h4('Artist Plays per Year (light version)'),
                                        plotOutput("multi_artist_history_plot",width = "710px",height="355px"),
                                        h4('Artist Plays per Year (goth style)'),
-                                       plotOutput("multi_artist_history_plot_2",width = "710px",height="355px")
+                                       plotOutput("multi_artist_history_plot_2",width = "710px",height="355px"),
+                                       h4('Yet another way'),
+                                       plotOutput("multi_artist_history_plot_3",width = "710px",height="355px")
                                        
                                      )
                                    )
@@ -234,13 +236,11 @@ shinyUI(
              ),
              # --------- Songs/ ----------------------------------
             tabPanel("Songs",
-                     #----------- Single Artist -----------------------
-
                               titlePanel("Find Songs"),
                               sidebarLayout(
                                 # Sidebar with a slider and selection inputs
                                 sidebarPanel(
-                                  h4('1) Start by narrowing down the list of songs'),
+                                  h4('1) Start by narrowing down the list of songs.'),
                                   h4('Type all or part of the song name then click "Find Songs."'),
                                   textInput("song_letters", label = h4("Give me a clue!"), value = default_song),
                                   actionButton("song_update_1","Find Songs"),
