@@ -6,8 +6,9 @@ output: html_document
 ---
 ![](https://wfmu.org/wp-content/uploads/2016/03/BadgeCourage.png) 
 
+
 ## About WFMU Playlist Explorer
-WFMU.ORG, a free-form, listener-supported radio station, maintains a huge trove of past playlists from many DJ's radio shows.  More recently, web-only programming has been added to this.  This dataset offers lots of opportunities for analysis.  I scraped all the playlists I could from the web site and started asking questions.  The data set is here for your own explorations. It represents *over a million plays spanning decades!*
+[WFMU.ORG](http:www.wfmu.org), a free-form, listener-supported radio station, maintains a huge trove of past playlists from many DJ's radio shows.  More recently, web-only programming has been added to this.  This dataset offers lots of opportunities for analysis.  I scraped all the playlists I could from the web site and started asking questions.  The data set is here for your own explorations. It represents *over a million plays spanning decades!*
 
 The web scraping and data-cleaning process was the most time consuming part of the exercise. Playlist tables are not in a consistent format and my HTML skills are rudimentary.  Some DJs are ommitted entirely because their playlist formats are too weird (working on it, maybe). I cleaned up the raw data to reduce errors and create consistency.  DJ's are inconsistent in how they enter artist names.  There are 12 different ways Andy Breckman can misspell "Bruce Springsteen"  I take a stab at fixing some of the glaring errors. I'm sure I missed many. Additionally, many artist names are variant due to collaborators with "featuring," "and the," "with," etc. in the name.  I condense the first two words of every artist name into an *ArtistToken* and drop the rest. In a very few cases the air date is clearly wrong. I strip those shows out.
 
@@ -19,13 +20,16 @@ The code used for scraping,cleaning and analyzing is available at https://github
 
 The code for this web app is at https://github.com/apsteinmetz/wfmu_explorer.git.
 
-Thanks to station manager, Ken Freedman, for giving me permission to scrape the site.
+Thanks to station manager, Ken Freedman, for giving me permission to scrape the site.  This is a personal project, not offically WFMU-sponsored or approved.
 
-wfmu.org is powered by KenzoDB ( http://kenzodb.com ) from Ken Garson Systems. Nice!
+wfmu.org is powered by KenzoDB ( http://kenzodb.com ) from Ken Garson Systems.
 
 This site is powered by Shiny by RStudio (https://www.rstudio.com/) and written in the R data science lanugage.
 
-**WFMU is listener supported!  [PLEDGE HERE!](https://pledge.wfmu.org/donate?step=landing)**
+**WFMU is listener supported!**
+
+<iframe src="https://pledge.wfmu.org/pledge-widget?program=TW" frameborder="0"></iframe>
+
 
 -- Art Steinmetz (apsteinmetz@yahoo.com)
 

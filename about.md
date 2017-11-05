@@ -29,7 +29,7 @@ The code used for scraping,cleaning and analyzing is available at https://github
 
 The code for this web app is at https://github.com/apsteinmetz/wfmu_explorer.git.
 
-Thanks to station manager, Ken Freedman, for giving me permission to scrape the site.  This is personal project, not offically WFMU-sponsored or approved.
+Thanks to station manager, Ken Freedman, for giving me permission to scrape the site.  This is a personal project, not offically WFMU-sponsored or approved.
 
 wfmu.org is powered by KenzoDB ( http://kenzodb.com ) from Ken Garson Systems.
 
