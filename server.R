@@ -583,5 +583,19 @@ shinyServer(function(input, output,session) {
   output$top_artists_for_song<-renderTable({
     top_artists_for_song(input$song_selection,input$song_years_range)
   })
+# ------------------- playlists --------------------
+  output$DJ_date_select <- renderUI({
+    updateDateRangeInput(session=session,"DJ_date_range",
+                "Date Range:",
+                start = filter(DJKey,ShowName==input$show_selection_5) %>% 
+                  pull(FirstShow),
+                end = filter(DJKey,ShowName==input$show_selection_5) %>% 
+                  pull(LastShow)
+    )
+    
+  })
+  output$debug_date<-renderPrint({
+    input$DJ_date_range
+  })
   
 })
