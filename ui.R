@@ -3,6 +3,7 @@ library(shiny)
 library(rmarkdown)
 library(lubridate)
 library(dplyr)
+library(shinycssloaders)
 
 
 shinyUI(
@@ -43,7 +44,8 @@ shinyUI(
                           fluidRow(
                             h4('Top Artists'),
                             tabsetPanel(type = "tabs",
-                                        tabPanel("Word Cloud", plotOutput("cloud")),
+                                        tabPanel("Word Cloud", 
+                                                 withSpinner(plotOutput("cloud"))),
                                         tabPanel("Table", tableOutput("table_artists"))
                             )),
                           fluidRow(
@@ -73,7 +75,8 @@ shinyUI(
                                      fluidRow(
                                        h4('Top Artists'),
                                        tabsetPanel(type = "tabs",
-                                                   tabPanel("Word Cloud", plotOutput("DJ_cloud")),
+                                                   tabPanel("Word Cloud", 
+                                                            withSpinner(plotOutput("DJ_cloud"))),
                                                    tabPanel("Table", tableOutput("DJ_table_artists"))
                                        )),
                                      fluidRow(
@@ -98,7 +101,7 @@ shinyUI(
                                    mainPanel(
                                      fluidRow(
                                        h4('DJ Neighborhood') 
-                                       , plotOutput("DJ_chord")
+                                       , withSpinner(plotOutput("DJ_chord"))
                                      ),
                                      fluidRow(
                                        h4('Most Similar Shows Based on Common Artists'),
@@ -129,7 +132,7 @@ shinyUI(
                                           h5(' The bulge at the low end shows WFMU DJs are not very similar to each other, in general.')
                                    ),
                                    column(6,
-                                          plotOutput("DJ_plot_sim_index",height="100px")
+                                          withSpinner(plotOutput("DJ_plot_sim_index",height="100px"))
                                    )
                                  ),
                                  fluidRow(column(11,offset=1,h4("Play Counts of Common Artists and Songs"))),
@@ -184,7 +187,7 @@ shinyUI(
                                      fluidRow(
                                        h4('Artist Plays per Quarter'),
                                        textOutput("chosen"),
-                                       plotOutput("artist_history_plot_1DJ"),
+                                       withSpinner(plotOutput("artist_history_plot_1DJ")),
                                        h4('Songs Played of this Artist'),
                                        tableOutput('top_songs_for_artist_1DJ')
                                      )
@@ -220,15 +223,15 @@ shinyUI(
                                    
                                    mainPanel(
                                      fluidRow(
+                                       h4("Artist Plays Per Year."),
+                                       withSpinner(plotOutput("multi_artist_history_plot_4",width = "710px",height="355px")),
                                        h4('Artist Plays per Year (light version)'),
+                                       h4('(The way Ken Likes to see it for WFMU site).'),
                                        plotOutput("multi_artist_history_plot",width = "710px",height="355px"),
                                        h4('Artist Plays per Year (goth style)'),
                                        plotOutput("multi_artist_history_plot_2",width = "710px",height="355px"),
                                        h4('Yet another way'),
-                                       plotOutput("multi_artist_history_plot_3",width = "710px",height="355px"),
-                                       h4("One More. The best way (though not Ken's favorite)."),
-                                       plotOutput("multi_artist_history_plot_4",width = "710px",height="355px")
-                                       
+                                       plotOutput("multi_artist_history_plot_3",width = "710px",height="355px")
                                      )
                                    )
                                    
@@ -268,7 +271,7 @@ shinyUI(
                                 mainPanel(
                                   fluidRow(
                                     h4('Song Plays per Quarter'),
-                                    plotOutput("song_history_plot"),
+                                    withSpinner(plotOutput("song_history_plot")),
                                     h4('Most Played Artists for this Song'),
                                     tableOutput('top_artists_for_song')
                                   )
