@@ -267,13 +267,13 @@ top_artists_for_song<-memoise(function(song,years_range=c(2012,2015)){
 })
 # ------------------ stuff for playlists tab --------------
 get_playlists<-memoise(function(show,date_range){
-  date_range=c(as.Date("2017-01-01"),as.Date("2017-02-01"))
+  #date_range=c(as.Date("2017-01-01"),as.Date("2017-02-01"))
   subset_playlists<-DJKey %>% 
     filter(ShowName %in% show) %>% 
     select(DJ) %>% 
     left_join(playlists) %>% 
-    filter(AirDate>date_range[1]) %>% 
-    filter(AirDate<date_range[2]) %>%
+    filter(AirDate>=date_range[1]) %>% 
+    filter(AirDate<=date_range[2]) %>%
     select(-artist_song,-DJ) %>% 
     as_tibble()
   if (nrow(subset_playlists)==0) subset_playlists<- data.frame(Title="No shows in this date range.")
@@ -600,6 +600,7 @@ shinyServer(function(input, output,session) {
 # ------------------- playlists TAB--------------------
   observe({
     ss5<-filter(DJKey,ShowName==input$show_selection_5)
+    input$reset_playlist_date_range
     updateDateRangeInput(session=session,"playlist_date_range",
                          "Date Range:",
                          start =  ss5 %>% pull(FirstShow),
@@ -614,7 +615,7 @@ shinyServer(function(input, output,session) {
   })
 
   output$debug_date<-renderPrint({
-    input$playlist_date_range
+    is(input$playlist_date_range[1])
   })
   
 })

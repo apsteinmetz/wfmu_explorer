@@ -289,17 +289,24 @@ shinyUI(
                                         choices = DJKey$ShowName,
                                         selected = 'Teenage Wasteland'),
                             h4('Choose Date Range:'), #just to make some space for calendar
-                            #uiOutput("DJ_date_select")
-                            dateRangeInput("playlist_date_range", "Date Range:")
+                            dateRangeInput("playlist_date_range", "Date Range:"),
+                            actionButton("reset_playlist_date_range",
+                                         "Reset Dates to Full History",
+                                         color="blue"),
+                            h4("Important Note:"),
+                            h5("I have stripped out signature songs"),
+                            h5("that a DJ might play every show"),
+                            h5("as it distorts the overall popularity"),
+                            h5("measures in the data set.")
                           )
                         ),
 
                         # Show playlists
                         mainPanel(
                           fluidRow(
-                            h4(paste('Play list for',"Show")),
+                            h4("Playlist(s)"),
                             #verbatimTextOutput("debug_date"),
-                            dataTableOutput("playlist_table"),
+                            withSpinner(dataTableOutput("playlist_table")),
                             h4()
                           )
                         )
