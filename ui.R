@@ -278,33 +278,33 @@ shinyUI(
                         )
                       )
              ),
-             # --------------- Playlists --------------------
-             # tabPanel("Playlists",
-             #          titlePanel("Get a Playlist"),
-             #          sidebarLayout(
-             #            sidebarPanel(
-             #              fluidRow(
-             #                h4("Choose a Show:"),
-             #                selectInput("show_selection_5", "Show Name:",
-             #                            choices = DJKey$ShowName,
-             #                            selected = 'Teenage Wasteland'),
-             #                h4('Choose Date Range:'), #just to make some space for calendar
-             #                uiOutput("DJ_date_select")
-             #                #dateRangeInput("DJ_date_range", "Date Range:")
-             #              )
-             #            ),
-             #            
-             #            # Show Word Cloud
-             #            mainPanel(
-             #              fluidRow(
-             #                h4(paste('Play list for',"Show")),
-             #                verbatimTextOutput("debug_date"),
-             #                #tableOutput("DJ_table_songs")
-             #                h4()
-             #              )
-             #            )
-             #          )
-             # ),
+             #--------------- Playlists --------------------
+             tabPanel("Playlists",
+                      titlePanel("Get a Playlist"),
+                      sidebarLayout(
+                        sidebarPanel(
+                          fluidRow(
+                            h4("Choose a Show:"),
+                            selectInput("show_selection_5", "Show Name:",
+                                        choices = DJKey$ShowName,
+                                        selected = 'Teenage Wasteland'),
+                            h4('Choose Date Range:'), #just to make some space for calendar
+                            #uiOutput("DJ_date_select")
+                            dateRangeInput("DJ_date_range", "Date Range:")
+                          )
+                        ),
+
+                        # Show Word Cloud
+                        mainPanel(
+                          fluidRow(
+                            h4(paste('Play list for',"Show")),
+                            verbatimTextOutput("debug_date"),
+                            #tableOutput("DJ_table_songs")
+                            h4()
+                          )
+                        )
+                      )
+             ),
              # --------- About/ ----------------------------------
              tabPanel("About",
                       mainPanel(
