@@ -290,16 +290,16 @@ shinyUI(
                                         selected = 'Teenage Wasteland'),
                             h4('Choose Date Range:'), #just to make some space for calendar
                             #uiOutput("DJ_date_select")
-                            dateRangeInput("DJ_date_range", "Date Range:")
+                            dateRangeInput("playlist_date_range", "Date Range:")
                           )
                         ),
 
-                        # Show Word Cloud
+                        # Show playlists
                         mainPanel(
                           fluidRow(
                             h4(paste('Play list for',"Show")),
-                            verbatimTextOutput("debug_date"),
-                            #tableOutput("DJ_table_songs")
+                            #verbatimTextOutput("debug_date"),
+                            dataTableOutput("playlist_table"),
                             h4()
                           )
                         )
