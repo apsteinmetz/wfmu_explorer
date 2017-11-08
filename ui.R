@@ -7,7 +7,7 @@ library(shinycssloaders)
 
 
 shinyUI(
-  navbarPage("WFMU Playlist Explorer ALPHA VERSION",
+  navbarPage("WFMU Playlist Explorer BETA VERSION",
              # -- Add Tracking JS File 
              #rest of UI doesn't initiate unless tab is clicked on if the code below runs
              #tags$head(includeScript("google-analytics.js")),

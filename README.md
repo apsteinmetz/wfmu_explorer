@@ -1,11 +1,10 @@
 ---
 title: "WFMU Playlist Explorer"
-version: 0.40
-date: "November 4, 2017"
+version: 0.50
+date: "November 8, 2017"
 output: html_document
 ---
 ![](https://wfmu.org/wp-content/uploads/2016/03/BadgeCourage.png) 
-
 
 ## About WFMU Playlist Explorer
 [WFMU.ORG](http:www.wfmu.org), a free-form, listener-supported radio station, maintains a huge trove of past playlists from many DJ's radio shows.  More recently, web-only programming has been added to this.  This dataset offers lots of opportunities for analysis.  I scraped all the playlists I could from the web site and started asking questions.  The data set is here for your own explorations. It represents *over a million plays spanning decades!*
@@ -34,6 +33,7 @@ This site is powered by Shiny by RStudio (https://www.rstudio.com/) and written 
 -- Art Steinmetz (apsteinmetz@yahoo.com)
 
 ## Change log
+*Changes in 0.50:  Moving from alpha to beta! Added playlists tab to display raw one or more raw playlists of a single DJ.  Searchable and sortable!  Signature songs are stripped out of the data set so as not to skew popularity measures elsehwere in the app. Ideally you should be able to toggle signature songs on and off.  I'll think about this.
 
 *Changes in 0.40: Added song tab to analyze artists and DJs who played a particular song title.
 
