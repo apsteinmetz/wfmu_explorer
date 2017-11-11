@@ -494,20 +494,37 @@ shinyServer(function(input, output,session) {
   })
   #-------------------- multi artist tab -----------------------
   reactive_multi_artists<-reactive({
-    input$artist_update_2
+    input$artist_selection_multi
+    input$artist_years_range_multi
     isolate({
       withProgress({
         setProgress(message = "Processing...")
-        multi_tokens<-word(input$multi_artists,1:50) %>% na.omit() %>% as.character()
-          ret_val<-play_count_by_artist(multi_tokens,
-                                    input$multi_artist_years_range)
+        #multi_tokens<-word(input$multi_artists,1:50) %>% na.omit() %>% as.character()
+        ret_val<-play_count_by_artist(input$artist_selection_multi,
+                                      input$artist_years_range_multi)
       })
     })
     return(ret_val)
   })
+  updateSelectizeInput( session=session,
+                        inputId = "artist_selection_multi", 
+                        choices = all_artisttokens, 
+                        server = TRUE,
+                        selected=default_artist
+  )
+  
+  output$artist_variants_multi<-renderTable({
+    playlists %>% 
+      filter(ArtistToken %in% input$artist_selection_multi) %>% 
+      select(Artist) %>% 
+      unique()
+  })
 
+  output$debug_multi<-renderPrint({
+    input$artist_selection_multi
+  })
 
-  output$multi_artist_history_plot <- renderPlot({
+    output$multi_artist_history_plot <- renderPlot({
     multi_artist_history<-reactive_multi_artists()
     gg<-multi_artist_history %>% ggplot(aes(x=AirDate,y=Spins,fill=ArtistToken))+geom_col()
     gg<-gg+labs(title=paste("Annual Plays by Artist"),caption=HOST_URL)
@@ -614,8 +631,5 @@ shinyServer(function(input, output,session) {
     
   })
 
-  output$debug_date<-renderPrint({
-    is(input$playlist_date_range[1])
-  })
   
 })

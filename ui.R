@@ -160,7 +160,8 @@ shinyUI(
                                        h4('Artist names reduced to token of first two words.'),
                                        selectizeInput("artist_selection_1DJ", h4("Select one or more artists"),
                                                       choices = NULL,
-                                                      multiple = TRUE
+                                                      multiple = TRUE,
+                                                      options = list(closeAfterSelect=TRUE)
                                                       #selected=default_artist
                                                       #options = list(placeholder = 'select artist(s)')
                                        ),
@@ -196,29 +197,31 @@ shinyUI(
                         ),
                         # --------------------- multi Artist ---------------
                         tabPanel("Multi Artist",
-                                 titlePanel("Artists Plays Over Time"),
+                                 titlePanel("Multi-Artist Plays Over Time"),
                                  sidebarLayout(
                                    # Sidebar with a slider and selection inputs
                                    sidebarPanel(
-                                     h4('ArtistToken separated by spaces'),
-                                     h5('Determine proper ArtistToken on Single Artist tab.'),
-                                     h5('This thing has no tolerace for misspelling and is case-senstive!'),
-                                     h5('Given there are nearly 40 thousand artists, a drop down list is impractical.'),
-                                     textInput("multi_artists", 
-                                               label = h4("Tokens Separated by Spaces"), 
-                                               value = "JustinBieber Rihanna CharlesManson"),
-                                     uiOutput('SelectMultiArtists'),
-                                     h4('Change the date range?'),
-                                     sliderInput("multi_artist_years_range",
-                                                 "Year Range:",
-                                                 min = min_year,
-                                                 max = year(Sys.Date()),
-                                                 sep = "",
-                                                 step=1,
-                                                 round=TRUE,
-                                                 value = c(2005,year(Sys.Date()))),
-                                     actionButton("artist_update_2",
-                                                  "Find Artists")
+                                     fluidRow(
+                                       h4('Artist names reduced to token of first two words.'),
+                                       selectizeInput("artist_selection_multi", h4("Select one or more artists"),
+                                                      choices = NULL,
+                                                      multiple = TRUE,
+                                                      #selected=default_artist,
+                                                      options = list(closeAfterSelect=TRUE)
+                                                      #options = list(placeholder = 'select artist(s)')
+                                       ),
+                                       h4('Change the date range to include?'),
+                                       sliderInput("artist_years_range_multi",
+                                                   "Year Range:",
+                                                   min = min_year,
+                                                   max = year(Sys.Date()),
+                                                   sep = "",
+                                                   step=1,
+                                                   round=TRUE,
+                                                   value = c(2002,year(Sys.Date()))),
+                                       h4('Full artist names included in this token:'),
+                                       tableOutput("artist_variants_multi")
+                                     )
                                    ),
                                    
                                    mainPanel(
