@@ -4,10 +4,11 @@ library(rmarkdown)
 library(lubridate)
 library(dplyr)
 library(shinycssloaders)
+library(shinythemes)
 
 
 shinyUI(
-  navbarPage("WFMU Playlist Explorer BETA VERSION",
+  navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("united"),
              # -- Add Tracking JS File 
              #rest of UI doesn't initiate unless tab is clicked on if the code below runs
              #tags$head(includeScript("google-analytics.js")),
