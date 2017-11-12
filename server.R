@@ -322,7 +322,7 @@ shinyServer(function(input, output,session) {
                   #fixed.asp=FALSE,
                   rot.per=0.35)
     text(1,1,labels=HOST_URL)
-  })
+  },outputArgs = list(bg="black"))
   output$table_artists <- renderTable({
     top_artists_reactive()
   })
@@ -424,7 +424,7 @@ shinyServer(function(input, output,session) {
     chordDiagram(cdf,annotationTrack = c('grid','name'),grid.col = colset)
     text(1,1,labels=HOST_URL)
     
-  })
+  },outputArgs = list(bg="black",fg="white"))
   
   output$DJ_plot_sim_index <- renderPlot({
     dj1<-filter(DJKey,ShowName==input$show_selection_1DJ) %>% pull(DJ)
@@ -436,7 +436,7 @@ shinyServer(function(input, output,session) {
     gg<-gg+scale_x_continuous()
     gg<-gg+ theme(plot.background = element_rect(fill="black"))
     gg
-  })
+  },outputArgs = list(bg="black"))
   
   output$DJ_table_common_songs <- renderTable({
     dj1<-filter(DJKey,ShowName==input$show_selection_1DJ) %>% pull(DJ)
