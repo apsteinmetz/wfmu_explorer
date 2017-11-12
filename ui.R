@@ -8,7 +8,7 @@ library(shinythemes)
 
 
 shinyUI(
-  navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("united"),
+  navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkly"),
              # -- Add Tracking JS File 
              #rest of UI doesn't initiate unless tab is clicked on if the code below runs
              #tags$head(includeScript("google-analytics.js")),
@@ -129,7 +129,7 @@ shinyUI(
                                  fluidRow(
                                    column(6,
                                           h4('Similarity Index'),
-                                          h5('Black curve is frequency of all DJ pair similarities. Vertical blue line is similarity of this pair.'),
+                                          h5('Bars are the  frequency of all DJ pair similarities. Vertical line is similarity of this pair.'),
                                           h5(' The bulge at the low end shows WFMU DJs are not very similar to each other, in general.')
                                    ),
                                    column(6,
@@ -204,7 +204,7 @@ shinyUI(
                                    sidebarPanel(
                                      fluidRow(
                                        h4('Artist names reduced to token of first two words.'),
-                                       selectizeInput("artist_selection_multi", h4("Select one or more artists"),
+                                       selectizeInput("artist_selection_multi", h4("Select two or more artists"),
                                                       choices = NULL,
                                                       multiple = TRUE,
                                                       #selected=default_artist,
@@ -220,7 +220,7 @@ shinyUI(
                                                    step=1,
                                                    round=TRUE,
                                                    value = c(2002,year(Sys.Date()))),
-                                       h4('Full artist names included in this token:'),
+                                       h4('Full artist names included in these tokens:'),
                                        tableOutput("artist_variants_multi")
                                      )
                                    ),
@@ -229,14 +229,13 @@ shinyUI(
                                      fluidRow(
                                        h4("Artist Plays Per Year."),
                                        withSpinner(plotOutput("multi_artist_history_plot_4",width = "710px",height="355px")),
+                                       h4('Artist Plays per Year (another way)'),
+                                       plotOutput("multi_artist_history_plot_2",width = "710px",height="355px"),
                                        h4('Artist Plays per Year (light version)'),
                                        h4('(The way Ken Likes to see it for WFMU site).'),
                                        plotOutput("multi_artist_history_plot",width = "710px",height="355px"),
-                                       h4('Artist Plays per Year (goth style)'),
-                                       plotOutput("multi_artist_history_plot_2",width = "710px",height="355px"),
-                                       h4('Yet another way'),
-                                       plotOutput("multi_artist_history_plot_3",width = "710px",height="355px")
-                                     )
+                                       h4()
+                                       )
                                    )
                                    
                                  )

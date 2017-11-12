@@ -311,6 +311,7 @@ shinyServer(function(input, output,session) {
     wordcloud_rep <- repeatable(wordcloud,seed=1234)
     top_artists<-top_artists_reactive() 
     scaleFactor=2
+    par(mar = rep(0, 4), bg = "black")
     wordcloud_rep(words = top_artists$ArtistToken, 
                   freq = top_artists$play_count^scaleFactor,
                   max.words=100, 
@@ -378,6 +379,7 @@ shinyServer(function(input, output,session) {
     wordcloud_rep <- repeatable(wordcloud,seed=1234)
     top_artists<-top_artists_process_DJ() 
     scaleFactor=2
+    par(mar = rep(0, 4), bg = "black")
     wordcloud_rep(words = top_artists$ArtistToken, 
                   freq = top_artists$play_count^scaleFactor,
                   max.words=100, 
@@ -418,6 +420,7 @@ shinyServer(function(input, output,session) {
     #chord diagrams
     cdf<-bind_cols(as_tibble(edges1),value=lwds)
     colset<-RColorBrewer::brewer.pal(11,'Paired')
+    par(mar = rep(0, 4), bg = "black",fg="white")
     chordDiagram(cdf,annotationTrack = c('grid','name'),grid.col = colset)
     text(1,1,labels=HOST_URL)
     
@@ -426,9 +429,13 @@ shinyServer(function(input, output,session) {
   output$DJ_plot_sim_index <- renderPlot({
     dj1<-filter(DJKey,ShowName==input$show_selection_1DJ) %>% pull(DJ)
     dj2<-filter(DJKey,ShowName==input$show_selection_4) %>% pull(DJ)
-    ggplot(dj_similarity_tidy,aes(Similarity))+
-      geom_density()+
-      geom_vline(xintercept = get_sim_index(dj1,dj2),color='blue')
+    gg<-ggplot()+
+      geom_histogram(data=dj_similarity_tidy,aes(Similarity),color="red")+
+      geom_vline(xintercept = get_sim_index(dj1,dj2),color='lightblue',size=2)
+    gg<-gg+theme_solarized_2(light = FALSE) + scale_colour_solarized("red")
+    gg<-gg+scale_x_continuous()
+    gg<-gg+ theme(plot.background = element_rect(fill="black"))
+    gg
   })
   
   output$DJ_table_common_songs <- renderTable({
@@ -480,7 +487,9 @@ shinyServer(function(input, output,session) {
     gg<-artist_history %>% ggplot(aes(x=AirDate,y=Spins,fill=ShowName))+geom_col()
     gg<-gg+labs(title=paste("Number of",input$artist_selection_1DJ,"plays every quarter by DJ"),
                 caption=HOST_URL)
+    gg<-gg+theme_solarized_2(light = FALSE) + scale_colour_solarized("red")
     gg<-gg+scale_x_continuous()
+    gg<-gg+ theme(plot.background = element_rect(fill="black"))
     gg
   })
   output$top_songs_for_artist_1DJ<-renderTable({
@@ -510,7 +519,7 @@ shinyServer(function(input, output,session) {
                         inputId = "artist_selection_multi", 
                         choices = all_artisttokens, 
                         server = TRUE,
-                        selected=default_artist
+                        selected=default_artist_multi
   )
   
   output$artist_variants_multi<-renderTable({
@@ -531,6 +540,7 @@ shinyServer(function(input, output,session) {
     gg<- gg+ theme_economist()
     #gg<-gg+theme_solarized_2(light = FALSE) + scale_colour_solarized("red")
     gg<-gg+scale_x_continuous()
+    #gg<-gg+ theme(plot.background = element_rect(fill="black"))
     gg
   })
 
@@ -539,8 +549,10 @@ shinyServer(function(input, output,session) {
     gg<-multi_artist_history %>% ggplot(aes(x=AirDate,y=Spins,fill=ArtistToken))+geom_col()
     gg<-gg+labs(title=paste("Annual Plays by Artist"),caption=HOST_URL)
     #gg<- gg+ theme_economist()
-    gg<-gg+theme_solarized_2(light = FALSE) + scale_colour_solarized("red")
+    gg<-gg+theme_solarized_2(light = FALSE) + scale_colour_solarized("red")    
+    gg<-gg+ theme(plot.background = element_rect(fill="black"),legend.background = element_rect(fill="black"))
     gg<-gg+scale_x_continuous()
+    gg<-gg+theme(legend.position = "top")
     gg
   })
   
@@ -550,6 +562,7 @@ shinyServer(function(input, output,session) {
     gg<-gg+labs(title=paste("Annual Plays by Artist"),caption=HOST_URL)
     #gg<- gg+ theme_economist()
     gg<-gg+theme_solarized_2(light = FALSE) + scale_colour_solarized("red")
+    gg<-gg+ theme(plot.background = element_rect(fill="black"))
     gg<-gg+scale_x_continuous()
     gg
   })
@@ -561,6 +574,7 @@ shinyServer(function(input, output,session) {
     gg<-gg+labs(title=paste("Annual Plays by Artist"),caption=HOST_URL)
     #gg<- gg+ theme_economist()
     gg<-gg+theme_solarized_2(light = FALSE) + scale_colour_solarized("red")
+    gg<-gg+ theme(plot.background = element_rect(fill="black"))
     gg<-gg+scale_x_continuous() + theme(legend.position = "none")
 
     gg
@@ -608,6 +622,8 @@ shinyServer(function(input, output,session) {
     gg<-song_history %>% ggplot(aes(x=AirDate,y=Spins,fill=ShowName))+geom_col()
     gg<-gg+labs(title=paste("Number of",input$song_selection,"plays every quarter by DJ"),
                 caption=HOST_URL)
+    gg<-gg+ theme_solarized_2(light = FALSE) + scale_colour_solarized("red")
+    gg<-gg+ theme(plot.background = element_rect(fill="black"),legend.background = element_rect(fill="black"))
     gg<-gg+scale_x_continuous()
     gg
   })

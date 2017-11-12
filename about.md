@@ -1,7 +1,7 @@
 ---
 title: "WFMU Playlist Explorer"
-version: 0.51
-date: "November 11, 2017"
+version: 0.52
+date: "November 12, 2017"
 output: html_document
 ---
 ![](https://wfmu.org/wp-content/uploads/2016/03/BadgeCourage.png) 
@@ -43,6 +43,7 @@ This site is powered by Shiny by RStudio (https://www.rstudio.com/) and written 
 -- Art Steinmetz (apsteinmetz@yahoo.com)
 
 ## Change log
+*Changes in 0.52: New Goth theme!
 
 *Changes in 0.51: Streamlined multi-artist selection tab.
 
