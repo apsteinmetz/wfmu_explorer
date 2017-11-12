@@ -420,7 +420,7 @@ shinyServer(function(input, output,session) {
     #chord diagrams
     cdf<-bind_cols(as_tibble(edges1),value=lwds)
     colset<-RColorBrewer::brewer.pal(11,'Paired')
-    par(mar = rep(0, 4), bg = "black",fg="white")
+    par(mar = rep(0, 4), bg = "black",fg="black")
     chordDiagram(cdf,annotationTrack = c('grid','name'),grid.col = colset)
     text(1,1,labels=HOST_URL)
     
