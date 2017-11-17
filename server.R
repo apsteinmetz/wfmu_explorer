@@ -379,7 +379,7 @@ shinyServer(function(input, output,session) {
     wordcloud_rep <- repeatable(wordcloud,seed=1234)
     top_artists<-top_artists_process_DJ() 
     scaleFactor=2
-    par(mar = rep(0, 4), bg = "black")
+    par(mar = rep(0, 4),fg="white")
     wordcloud_rep(words = top_artists$ArtistToken, 
                   freq = top_artists$play_count^scaleFactor,
                   max.words=100, 
@@ -387,7 +387,7 @@ shinyServer(function(input, output,session) {
                   colors=brewer.pal(8, "Dark2"),
                   scale = c(4,.3))
     text(1,1,labels=HOST_URL)
-  })
+  },bg="black")
   output$DJ_table_artists <- renderTable({
     top_artists_process_DJ()
   })
