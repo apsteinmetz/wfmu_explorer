@@ -311,7 +311,7 @@ shinyServer(function(input, output,session) {
     wordcloud_rep <- repeatable(wordcloud,seed=1234)
     top_artists<-top_artists_reactive() 
     scaleFactor=2
-    par(mar = rep(0, 4), bg = "black",fg="white")
+    par(mar = rep(0, 4), fg="white")
     wordcloud_rep(words = top_artists$ArtistToken, 
                   freq = top_artists$play_count^scaleFactor,
                   max.words=100, 
