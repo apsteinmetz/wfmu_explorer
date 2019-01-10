@@ -20,6 +20,7 @@ library(xts)
 library(stringr)
 library(ggplot2)
 library(ggthemes)
+library(tm)
 
 HOST_URL<- "wfmu.servebeer.com"
 

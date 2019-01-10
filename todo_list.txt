@@ -3,3 +3,4 @@ add creation of djSimiliarity.rdata to clean_playlists.r
 add creation of djdtm.Rdata do clean_playlists.r
 Now they must be done from analyse_playlists.rmd in WFMU project and manually moved into this directory
 
+artist tab selections are too big a list to include in ui.r  but i can't figure out how to populate the field with a default, without it.
