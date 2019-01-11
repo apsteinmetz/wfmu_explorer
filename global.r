@@ -37,7 +37,6 @@ all_artisttokens<-playlists %>%
 playlists<-playlists %>% 
   ungroup() %>% 
   mutate(artist_song=paste(ArtistToken,Title))
-
 #get range of show dates by DJ to limit year range slider
 
 min_year<-playlists %>% 
