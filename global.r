@@ -16,7 +16,7 @@ load('djdtm.RData')
 default_song<-"Help"
 default_artist<-'Abba'
 default_artist_multi<-c('Abba','Beatles')
-
+max_year<-max(year(playlists$AirDate))
 
 #limit DJ list to DJs that are present in playlist file
 DJKey<-DJKey %>% 
