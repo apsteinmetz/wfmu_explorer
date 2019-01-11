@@ -207,7 +207,7 @@ shinyUI(
                                        selectizeInput("artist_selection_multi", h4("Select two or more artists"),
                                                       choices = NULL,
                                                       multiple = TRUE,
-                                                      #selected=default_artist,
+                                                      #selected=default_artist_multi,
                                                       options = list(closeAfterSelect=TRUE)
                                                       #options = list(placeholder = 'select artist(s)')
                                        ),
