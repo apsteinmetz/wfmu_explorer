@@ -17,6 +17,7 @@ default_song<-"Help"
 default_artist<-'Abba'
 default_artist_multi<-c('Abba','Beatles')
 max_year<-max(year(playlists$AirDate))
+min_year<-min(year(playlists$AirDate))
 
 #limit DJ list to DJs that are present in playlist file
 DJKey<-DJKey %>% 
@@ -38,13 +39,6 @@ playlists<-playlists %>%
   ungroup() %>% 
   mutate(artist_song=paste(ArtistToken,Title))
 #get range of show dates by DJ to limit year range slider
-
-min_year<-playlists %>% 
-  select(AirDate) %>% 
-  top_n(-1) %>% 
-  distinct() %>% 
-  pull(AirDate) %>% 
-  year()
 
 FirstShow<-playlists %>% 
   group_by(DJ) %>% 
