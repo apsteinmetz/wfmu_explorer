@@ -4,7 +4,7 @@ version: 0.52
 date: "Jan 20 2019"
 output: html_document
 ---
-![](https://wfmu.org/wp-content/uploads/2016/03/BadgeCourage.png) 
+![](BadgeCourage.png) 
 
 <!-- Global Site Tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-107406537-1"></script>

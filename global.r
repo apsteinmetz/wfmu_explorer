@@ -10,13 +10,14 @@ load("playlists.Rdata")
 load('djSimilarity.RData')
 load('djdtm.RData')
 
-#load(file=url("https://www.dropbox.com/s/zobdwfuc3x1p2h8/playlists.Rdata?dl=1")) #playlists
-#load(file=url("https://www.dropbox.com/s/are6e2jx8djvkl4/DJKey.RData?dl=1")) #DJKey
+
+#playlists <- playlists %>% mutate_if(is.character,str_squish)
 
 default_song<-"Help"
 default_artist<-'Abba'
-default_artist_multi<-c('Abba','TaylorSwift')
-
+default_artist_multi<-c('Abba','Beatles')
+max_year<-max(year(playlists$AirDate))
+min_year<-min(year(playlists$AirDate))
 
 #limit DJ list to DJs that are present in playlist file
 DJKey<-DJKey %>% 
@@ -25,19 +26,19 @@ DJKey<-DJKey %>%
   arrange(ShowName) %>% 
   unique()
 
+#get unique artists
+all_artisttokens<-playlists %>%
+  ungroup() %>% 
+  select(ArtistToken) %>%
+  unique() %>%
+  arrange(ArtistToken) %>% 
+  pull(ArtistToken)
+
 #add artist with song to get unique songs
 playlists<-playlists %>% 
   ungroup() %>% 
   mutate(artist_song=paste(ArtistToken,Title))
-
 #get range of show dates by DJ to limit year range slider
-
-min_year<-playlists %>% 
-  select(AirDate) %>% 
-  top_n(-1) %>% 
-  distinct() %>% 
-  pull(AirDate) %>% 
-  year()
 
 FirstShow<-playlists %>% 
   group_by(DJ) %>% 
@@ -54,12 +55,6 @@ LastShow<-playlists %>%
 DJKey <- DJKey %>% 
   left_join(FirstShow,by="DJ") %>% 
   left_join(LastShow,by="DJ")
-
-all_artisttokens<-playlists %>%
-  select(ArtistToken) %>%
-  unique() %>%
-  arrange(ArtistToken) %>% 
-  pull(ArtistToken)
 
 #all_artisttokens<-all_artisttokens[100:200]
 #cleanup

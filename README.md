@@ -4,7 +4,7 @@ version: 0.52
 date: "Jan 20 2019"
 output: html_document
 ---
-![](https://wfmu.org/wp-content/uploads/2016/03/BadgeCourage.png) 
+![](BadgeCourage.png) 
 
 ## About WFMU Playlist Explorer
 [WFMU.ORG](http:www.wfmu.org), a free-form, listener-supported radio station, maintains a huge trove of past playlists from many DJ's radio shows.  More recently, web-only programming has been added to this.  This dataset offers lots of opportunities for analysis.  I scraped all the playlists I could from the web site and started asking questions.  The data set is here for your own explorations. It represents *over a million plays spanning decades!*

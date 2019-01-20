@@ -30,11 +30,11 @@ shinyUI(
                           sliderInput("years_range_1",
                                       "Year Range:",
                                       min = min_year,
-                                      max = year(Sys.Date()),
+                                      max = max_year,
                                       sep = "",
                                       step=1,
                                       round= TRUE,
-                                      value = c(year(Sys.Date())-3,year(Sys.Date()))),
+                                      value = c(max_year-3,max_year)),
                           actionButton("update","Update")
                           , textOutput("text_song_count")
                           
@@ -170,11 +170,11 @@ shinyUI(
                                        sliderInput("artist_years_range_1DJ",
                                                    "Year Range:",
                                                    min = min_year,
-                                                   max = year(Sys.Date()),
+                                                   max = max_year,
                                                    sep = "",
                                                    step=1,
                                                    round=TRUE,
-                                                   value = c(2002,year(Sys.Date()))),
+                                                   value = c(2002,max_year)),
                                        h4('Change threshold to show DJ name?'),
                                        selectInput("artist_all_other_1DJ",
                                                    "Threshold of Minimum Plays to show DJ",
@@ -207,7 +207,7 @@ shinyUI(
                                        selectizeInput("artist_selection_multi", h4("Select two or more artists"),
                                                       choices = NULL,
                                                       multiple = TRUE,
-                                                      #selected=default_artist,
+                                                      #selected=default_artist_multi,
                                                       options = list(closeAfterSelect=TRUE)
                                                       #options = list(placeholder = 'select artist(s)')
                                        ),
@@ -215,11 +215,11 @@ shinyUI(
                                        sliderInput("artist_years_range_multi",
                                                    "Year Range:",
                                                    min = min_year,
-                                                   max = year(Sys.Date()),
+                                                   max = max_year,
                                                    sep = "",
                                                    step=1,
                                                    round=TRUE,
-                                                   value = c(2002,year(Sys.Date()))),
+                                                   value = c(2002,max_year)),
                                        h4('Full artist names included in these tokens:'),
                                        tableOutput("artist_variants_multi")
                                      )
@@ -259,9 +259,9 @@ shinyUI(
                           sliderInput("song_years_range",
                                       "Year Range:",
                                       min = min_year,
-                                      max = year(Sys.Date()),
+                                      max = max_year,
                                       sep = "",
-                                      value = c(2002,year(Sys.Date()))),
+                                      value = c(2002,max_year)),
                           fluidRow(
                             h4('4) Change threshold to show DJ?'),
                             selectInput("song_all_other",
