@@ -55,7 +55,7 @@ This site is powered by Shiny by RStudio (https://www.rstudio.com/) and written 
 
 *Changes in 0.37:Redid single artist tab.  Artist selection much streamlined.
 
-*Changes in 0.36: Multi-select on artist tab.  Many artist entries are misspelled.  Ideally, you'll combine variants.  You can now select, say, "DustySpringfield" and "DusySprinfield" if you start your search with "du."  Searching for "el" will let you select "ELO and "ElectricLight" (as in Orchestra).
+*Changes in 0.36: Multi-select on artist tab.  Many artist entries are misspelled.  Ideally, you'll combine variants.  You can now select, say, "Dusty Springfield" and "Dusy Sprinfield" if you start your search with "du."  Searching for "el" will let you select "ELO and "Electric Light" (as in Orchestra).
 
 Added a multi-artist tab.  Here you can compare more than one artist's plays over time.  At Ken's request the sizing of the plot is 710x355.  You can right-click "save as" in your browser to pull the image for further use.
 
