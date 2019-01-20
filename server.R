@@ -38,6 +38,7 @@ get_top_artists<-memoise(function(onAir,years_range) {
   top_artists<-DJ_set %>% 
     left_join(playlists,by='DJ') %>%
     ungroup() %>% 
+    filter(ArtistToken != "Unknown") %>% 
     filter(AirDate>=as.Date(paste0(years_range[1],"-1-1"))) %>%  
     filter(AirDate<=as.Date(paste0(years_range[2],"-12-31"))) %>%  
     group_by(ArtistToken)%>%
@@ -60,6 +61,8 @@ get_top_songs<-memoise(function(onAir='ALL',years_range) {
   }
   all_songs<-DJ_set %>% 
     ungroup() %>% 
+    filter(Title != "Unknown") %>% 
+    filter(Title != "") %>% 
     filter(AirDate>=as.Date(paste0(years_range[1],"-1-1"))) %>%  
     filter(AirDate<=as.Date(paste0(years_range[2],"-12-31")))
   
