@@ -4,3 +4,4 @@ README.html
 rsconnect
 .Rhistory
 .RData
+*.csv
