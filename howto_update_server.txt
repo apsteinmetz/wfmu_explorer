@@ -4,3 +4,5 @@ git push
 log into ubuntu instance on AWS ec2-52-91-23-6.compute-1.amazonaws.com
 navigate to /srv/shiny-server on instance
 git pull
+reboot server
+
