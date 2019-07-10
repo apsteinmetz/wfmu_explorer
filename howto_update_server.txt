@@ -1,6 +1,6 @@
 how to update
 make sure playlists.RData, djdtm.rdata, djkey.rdata and djsimiliary.rdata are up to date
 git push
-log into ubuntu instance on AWS
+log into ubuntu instance on AWS ec2-52-91-23-6.compute-1.amazonaws.com
 navigate to /srv/shiny-server on instance
 git pull
