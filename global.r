@@ -38,24 +38,3 @@ all_artisttokens<-playlists %>%
 playlists<-playlists %>% 
   ungroup() %>% 
   mutate(artist_song=paste(ArtistToken,Title))
-#get range of show dates by DJ to limit year range slider
-
-FirstShow<-playlists %>% 
-  group_by(DJ) %>% 
-  select(DJ,AirDate) %>% 
-  distinct() %>% 
-  top_n(-1) %>% rename(FirstShow=AirDate)
-
-LastShow<-playlists %>% 
-  group_by(DJ) %>% 
-  select(DJ,AirDate) %>% 
-  distinct() %>% 
-  top_n(1) %>% rename(LastShow=AirDate)
-
-DJKey <- DJKey %>% 
-  left_join(FirstShow,by="DJ") %>% 
-  left_join(LastShow,by="DJ")
-
-#all_artisttokens<-all_artisttokens[100:200]
-#cleanup
-rm(LastShow,FirstShow)
