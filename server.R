@@ -271,7 +271,7 @@ top_artists_for_song<-memoise(function(song,years_range=c(2012,2015)){
 })
 # ------------------ stuff for playlists tab --------------
 get_playlists<-memoise(function(show,date_range){
-  #date_range=c(as.Date("2017-01-01"),as.Date("2017-02-01"))
+  date_range=c(as.Date("2017-01-01"),as.Date("2017-02-01"))
   subset_playlists<-DJKey %>% 
     filter(ShowName %in% show) %>% 
     select(DJ) %>% 
@@ -645,8 +645,9 @@ shinyServer(function(input, output,session) {
                          min = ss5 %>% pull(FirstShow),
                          max = ss5 %>% pull(LastShow)
     )
-    output$playlist_table<-renderDataTable({
+    output$playlist_table<-DT::renderDataTable({
       get_playlists(input$show_selection_5,input$playlist_date_range)
+      print(get_playlists(input$show_selection_5,input$playlist_date_range)) # DEBUG
     })
     
   })

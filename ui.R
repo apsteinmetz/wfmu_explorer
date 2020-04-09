@@ -309,7 +309,7 @@ shinyUI(
                           fluidRow(
                             h4("Playlist(s)"),
                             #verbatimTextOutput("debug_date"),
-                            withSpinner(dataTableOutput("playlist_table")),
+                            withSpinner(DT::dataTableOutput("playlist_table")),
                             h4()
                           )
                         )
