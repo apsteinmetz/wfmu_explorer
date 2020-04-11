@@ -46,7 +46,7 @@ shinyUI(
                             h4('Top Artists'),
                             tabsetPanel(type = "tabs",
                                         tabPanel("Word Cloud", 
-                                                 withSpinner(plotOutput("cloud"))),
+                                                 withSpinner(wordcloud2Output("cloud"))),
                                         tabPanel("Table", tableOutput("table_artists"))
                             )),
                           fluidRow(
@@ -77,7 +77,7 @@ shinyUI(
                                        h4('Top Artists'),
                                        tabsetPanel(type = "tabs",
                                                    tabPanel("Word Cloud", 
-                                                            withSpinner(plotOutput("DJ_cloud"))),
+                                                            withSpinner(wordcloud2Output("DJ_cloud"))),
                                                    tabPanel("Table", tableOutput("DJ_table_artists"))
                                        )),
                                      fluidRow(
