@@ -48,7 +48,8 @@ shinyUI(
                                         tabPanel("Word Cloud",
                                                  withSpinner(wordcloud2Output("cloud"))) ,
                                         tabPanel("Table", tableOutput("table_artists"))
-                            )),
+                            )
+                          ),
                           fluidRow(
                             h4('Top Songs'),
                             tableOutput("table_songs"),

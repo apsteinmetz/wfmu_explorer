@@ -17,7 +17,7 @@ load('DJKey.RData')
 load("playlists.Rdata")
 load('djSimilarity.RData')
 load('djdtm.RData')
-
+source("wordcloud2a.r")
 
 #playlists <- playlists %>% mutate_if(is.character,str_squish)
 
@@ -90,24 +90,22 @@ ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkl
                               
                               # Main panel for displaying outputs ----
                               mainPanel(
-                                
                                 # Output: Header + summary of distribution ----
-                                h4("Summary"),
-                                verbatimTextOutput("summary"),
-                                
-                                # Output: Header + table of distribution ----
-                                h4("Artists"),
-                                tableOutput("table_artists"),
-                                h4("Songs"),
-                                tableOutput("table_songs")
+                                h4("Top Artists"),
+                                tabsetPanel(type = "tabs",
+                                             tabPanel("Word Cloud",
+                                                      withSpinner(wordcloud2Output("cloud"))) ,
+                                            tabPanel("Table", tableOutput("table_artists"))
+                                ),
+                               h4("Songs"),
+                               tableOutput("table_songs")
                               )
-                              
                             )
                           )
                  )
 )
 
-# Define server logic to summarize and view selected dataset ----
+# --------------SERVER -----------------------------------------------------------
 server <- function(input, output) {
   # ----------------- STUFF FOR STATION TAB -----------------------------
   get_top_artists<-memoise(function(onAir="ALL",years_range = c(2010,2012)) {
@@ -168,11 +166,9 @@ server <- function(input, output) {
   top_artists_reactive<-eventReactive(
     input$update,
     {
-      isolate({
-        withProgress({
-          setProgress(message = "Processing Artists...")
-          ret_val <- get_top_artists(input$selection,input$years_range_1)
-        })
+      withProgress({
+        setProgress(message = "Processing Artists...")
+        ret_val <- get_top_artists(input$selection,input$years_range_1)
       })
       return(ret_val)
     },ignoreNULL = FALSE)
@@ -187,10 +183,19 @@ server <- function(input, output) {
     },
     ignoreNULL = FALSE)
   
-  # Show the first "n" observations ----
-  # The use of isolate() is necessary because we don't want the table
-  # to update whenever input$obs changes (only when the user clicks
-  # the action button)
+  output$test <- renderText({
+    paste("test")
+  })
+  
+  output$cloud <- renderWordcloud2({
+    top_artists <-top_artists_reactive()
+    wordcloud2a(top_artists,
+               size=0.3,
+               backgroundColor = "black",
+               color = 'random-light',
+               ellipticity = 1)
+  })
+
   output$table_artists <- renderTable({
     head(top_artists_reactive(),25)
   })
@@ -200,7 +205,9 @@ server <- function(input, output) {
   output$play_count <- renderText({
     paste("Songs Played: ",format(top_songs_reactive()$count,big.mark = ","))
   })
+  output$play_count_2 <- renderText({
+    paste("Songs Played: ")
+  })
 }
-
-# Create Shiny app ----
+# -------------- CREATE SHINY APP  -----------------------------------------------------------
 shinyApp(ui, server)
