@@ -16,16 +16,17 @@ shinyUI(
              # --------- Station/ ----------------------------------
              tabPanel("Station",
                       titlePanel("Top Artists and Songs Played on WFMU"),
-                      
                       sidebarLayout(
-                        
+
                         # Sidebar with a slider and selection inputs
                         sidebarPanel(
                           h4("Last Playlist Update:"),
                           h4(textOutput("most_recent_date")),
-                          
+
                           selectInput("selection", "Are the DJs On Current Schedule?:",
-                                      choices = c('ALL','YES','NO')),
+                                      choices = c('ALL','YES','NO'),
+                                      selectize = TRUE,
+                                      selected = "ALL"),
                           h4('Be aware a wide date range could take many seconds to process.'),
                           sliderInput("years_range_1",
                                       "Year Range:",
@@ -34,24 +35,24 @@ shinyUI(
                                       sep = "",
                                       step=1,
                                       round= TRUE,
-                                      value = c(max_year-3,max_year)),
+                                      value = c(max_year-3,max_year)) ,
                           actionButton("update","Update")
-                          , textOutput("text_song_count")
-                          
+
                         ),
-                        
+
                         # Show Word Cloud
                         mainPanel(
                           fluidRow(
                             h4('Top Artists'),
                             tabsetPanel(type = "tabs",
-                                        tabPanel("Word Cloud", 
-                                                 withSpinner(wordcloud2Output("cloud"))),
+                                        tabPanel("Word Cloud",
+                                                 withSpinner(wordcloud2Output("cloud"))) ,
                                         tabPanel("Table", tableOutput("table_artists"))
                             )),
                           fluidRow(
                             h4('Top Songs'),
-                            tableOutput("table_songs")
+                            tableOutput("table_songs"),
+                            textOutput("text_song_count")
                           )
                         )
                       )
@@ -67,16 +68,16 @@ shinyUI(
                                                  choices = DJKey$ShowName,
                                                  selected = 'Teenage Wasteland'),
                                      hr(),
-                                     uiOutput("DJ_date_slider") 
+                                     uiOutput("DJ_date_slider")
                                      #, actionButton("DJ_update","Update")
                                    ),
-                                   
+
                                    # Show Word Cloud
                                    mainPanel(
                                      fluidRow(
                                        h4('Top Artists'),
                                        tabsetPanel(type = "tabs",
-                                                   tabPanel("Word Cloud", 
+                                                   tabPanel("Word Cloud",
                                                             withSpinner(wordcloud2Output("DJ_cloud"))),
                                                    tabPanel("Table", tableOutput("DJ_table_artists"))
                                        )),
