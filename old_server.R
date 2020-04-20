@@ -286,6 +286,8 @@ shinyServer(function(input, output,session) {
   
   top_songs_static <- get_top_songs()
 
+# -------------------OUTPUT SECTION  
+  
 # ------------------ STATION TAB -----------------
   top_artists_reactive<-eventReactive(
     input$update,

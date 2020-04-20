@@ -187,12 +187,108 @@ ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkl
                                        )
                                      )
                             )
-                 ) # end DJ tab
+                 ), # end DJ tab
+                 # --------- ARTISTS TAB ----------------------------------
+                 navbarMenu("Artists",
+                            #----------- Single Artist -----------------------
+                            tabPanel("Single Artist",
+                                     titlePanel("Artists Plays by DJ Over Time"),
+                                     sidebarLayout(
+                                       # Sidebar with a slider and selection inputs
+                                       sidebarPanel(
+                                         fluidRow(
+                                           h4('Artist names reduced to token of first two words.'),
+                                           selectizeInput("artist_selection_1DJ", h4("Select one or more artists"),
+                                                          choices = NULL,
+                                                          multiple = TRUE,
+                                                          options = list(closeAfterSelect=TRUE)
+                                                          #selected=default_artist
+                                                          #options = list(placeholder = 'select artist(s)')
+                                           ),
+                                           h4('Change the date range to include?'),
+                                           sliderInput("artist_years_range_1DJ",
+                                                       "Year Range:",
+                                                       min = min_year,
+                                                       max = max_year,
+                                                       sep = "",
+                                                       step=1,
+                                                       round=TRUE,
+                                                       value = c(2002,max_year)),
+                                           h4('Change threshold to show DJ name?'),
+                                           selectInput("artist_all_other_1DJ",
+                                                       "Threshold of Minimum Plays to show DJ",
+                                                       selected = 3,
+                                                       choices=1:9),
+                                           h4('Full artist names included in this token:'),
+                                           tableOutput("artist_variants")
+                                         )
+                                         
+                                       ),
+                                       mainPanel(
+                                         fluidRow(
+                                           h4('Artist Plays per Quarter'),
+                                           textOutput("chosen"),
+                                           withSpinner(plotOutput("artist_history_plot_1DJ")),
+                                           h4('Songs Played of this Artist'),
+                                           tableOutput('top_songs_for_artist_1DJ')
+                                         )
+                                       )
+                                     )
+                            ),
+                            # ---------- multi Artist ---------------
+                            tabPanel("Multi Artist",
+                                     titlePanel("Multi-Artist Plays Over Time"),
+                                     sidebarLayout(
+                                       # Sidebar with a slider and selection inputs
+                                       sidebarPanel(
+                                         fluidRow(
+                                           h4('Artist names reduced to token of first two words.'),
+                                           selectizeInput("artist_selection_multi", h4("Select two or more artists"),
+                                                          choices = NULL,
+                                                          multiple = TRUE,
+                                                          #selected=default_artist_multi,
+                                                          options = list(closeAfterSelect=TRUE)
+                                                          #options = list(placeholder = 'select artist(s)')
+                                           ),
+                                           h4('Change the date range to include?'),
+                                           sliderInput("artist_years_range_multi",
+                                                       "Year Range:",
+                                                       min = min_year,
+                                                       max = max_year,
+                                                       sep = "",
+                                                       step=1,
+                                                       round=TRUE,
+                                                       value = c(2002,max_year)),
+                                           h4('Full artist names included in these tokens:'),
+                                           tableOutput("artist_variants_multi")
+                                         )
+                                       ),
+                                       
+                                       mainPanel(
+                                         fluidRow(
+                                           h4("Artist Plays Per Year."),
+                                           withSpinner(plotOutput("multi_artist_history_plot_4",width = "710px",height="355px")),
+                                           h4('Artist Plays per Year (another way)'),
+                                           plotOutput("multi_artist_history_plot_2",width = "710px",height="355px"),
+                                           h4('Artist Plays per Year (light version)'),
+                                           h4('(The way Ken Likes to see it for WFMU site).'),
+                                           plotOutput("multi_artist_history_plot",width = "710px",height="355px"),
+                                           h4()
+                                         )
+                                       )
+                                       
+                                     )
+                                     
+                            )
+                 )
 ) # end UI
 
-# ----------------- DEFINE SERVER ----------------------
-server <- function(input, output) {
-  # ----------------- STUFF FOR STATION TAB -----------------------------
+
+
+
+# ----------------- DEFINE SERVER ----------------------------------------------------------------
+server <- function(input, output, session) {
+  # -------------- FUNCTIONS FOR STATION TAB -----------------------------
   get_top_artists<-memoise(function(onAir="ALL",years_range = c(2010,2012)) {
     years_range <- c(round(years_range[1]),round(years_range[2]))
     if (onAir=='ALL') {
@@ -271,7 +367,7 @@ server <- function(input, output) {
     paste("test")
   })
   
-  # ----------------- FUNCTIONS FOR DJS TAB -----------------------------
+  # -------------- FUNCTIONS FOR DJS TAB -----------------------------
   get_top_artists_DJ<-memoise(function(dj="TW",years_range = c(2017,2019)) {
     years_range <- c(round(years_range[1]),round(years_range[2]))
     top_artists<-playlists %>%
@@ -360,8 +456,69 @@ server <- function(input, output) {
       {.}
     songs
   })
-  # ----------------- OUTPUT SECTION --------------------
-  # ----------- station tab ----------------
+  # ---------------FUNCTIONS FOR ARTIST TAB -----------------------------
+  play_count_by_DJ<-memoise(function(artist_token = "Abba",years_range = c(2016,2019),threshold=3){
+    years_range <- c(round(years_range[1]),round(years_range[2]))
+    pc<- playlists %>% 
+      ungroup() %>% 
+      filter(AirDate>=as.Date(paste0(years_range[1],"-1-1"))) %>%  
+      filter(AirDate<=as.Date(paste0(years_range[2],"-12-31"))) %>%  
+      mutate(DJ=as.character(DJ)) %>% 
+      filter(ArtistToken %in% artist_token) %>% 
+      mutate(AirDate=as.yearqtr(AirDate))  %>% 
+      group_by(AirDate,DJ) %>% 
+      summarise(Spins=n()) %>% 
+      arrange(AirDate)
+    
+    pc1<- pc %>% 
+      filter(Spins>=threshold)
+    
+    #lump together all DJ's who played the artist less than 'threshold' times
+    pc2<- pc %>%
+      ungroup() %>% 
+      filter(Spins<threshold) %>% 
+      group_by(AirDate) %>% 
+      summarise(Spins=sum(Spins)) %>% 
+      mutate(ShowName='AllOther')
+    
+    pc3<-pc1 %>% 
+      left_join(DJKey,by='DJ') %>% 
+      select(AirDate,Spins,ShowName) %>% 
+      full_join(pc2) %>%
+      ungroup()
+    
+    return(pc3)
+  })
+  
+  play_count_by_artist<-memoise(function(artist_tokens= c("Abba","Beatles"),years_range=c(2012,2015)){
+    years_range <- c(round(years_range[1]),round(years_range[2]))
+    pc<- playlists %>% 
+      ungroup() %>% 
+      filter(AirDate>=as.Date(paste0(years_range[1],"-1-1"))) %>%  
+      filter(AirDate<=as.Date(paste0(years_range[2],"-12-31"))) %>%  
+      filter(ArtistToken %in% artist_tokens) %>% 
+      mutate(AirDate=year(AirDate))  %>% 
+      group_by(AirDate,ArtistToken) %>% 
+      summarise(Spins=n()) %>% 
+      arrange(AirDate)
+    
+    return(pc)
+  })
+  
+  top_songs_for_artist<-memoise(function(artist_token = "Abba",years_range=c(2012,2015)){
+    years_range <- c(round(years_range[1]),round(years_range[2]))
+    ts<-playlists %>% 
+      filter(ArtistToken %in% artist_token) %>% 
+      filter(AirDate>=as.Date(paste0(years_range[1],"-1-1"))) %>%  
+      filter(AirDate<=as.Date(paste0(years_range[2],"-12-31"))) %>%  
+      group_by(Title) %>% 
+      summarise(count=n()) %>% 
+      arrange(desc(count))
+    return(ts)
+  })
+  
+  # ---------------OUTPUT SECTION --------------------
+  # ------------------- station tab ----------------
   output$cloud <- renderWordcloud2({
     top_artists <-top_artists_reactive()
     wordcloud2a(top_artists,
@@ -383,7 +540,7 @@ server <- function(input, output) {
   output$play_count_2 <- renderText({
     paste("Songs Played: ")
   })
-  # ----------- DJs tab --------------------
+  # ------------------- DJs tab --------------------
   output$DJ_date_slider <- renderUI({
     sliderInput("DJ_years_range",
                 "Year Range:",
@@ -429,10 +586,10 @@ server <- function(input, output) {
   output$DJ_cloud <- renderWordcloud2({
     top_artists<-top_artists_DJ_reactive() 
     wordcloud2a(top_artists,
-               size=0.3,
-               backgroundColor = "black",
-               color = 'random-light',
-               ellipticity = 1)
+                size=0.3,
+                backgroundColor = "black",
+                color = 'random-light',
+                ellipticity = 1)
   })
   output$DJ_table_artists <- renderTable({
     top_artists_DJ_reactive()
@@ -498,6 +655,141 @@ server <- function(input, output) {
     artists_in_common(dj1,dj2)
   })
   
+  
+  # ------------------- artist tab
+  #---------------------- single artist tab-----------------------------------
+  reactive_artists_1DJ<-reactive({
+    input$artist_update_1DJ
+    isolate({      
+      withProgress({
+        setProgress(message = "Processing...")
+        ret_val<-playlists %>%
+          ungroup() %>%
+          filter(grepl(str_to_title(input$artist_letters),ArtistToken)) %>% 
+          select(ArtistToken) %>%
+          distinct() %>%
+          arrange(ArtistToken) %>%
+          pull(ArtistToken)
+      })
+    })
+    return(ret_val)
+  })
+  updateSelectizeInput( session = session,
+                        inputId = "artist_selection_1DJ", 
+                        choices = all_artisttokens, 
+                        server = TRUE,
+                        selected=default_artist
+  )
+  process_artists_1DJ<-function(){
+    withProgress({
+      setProgress(message = "Processing...")
+      ret_val<-play_count_by_DJ(input$artist_selection_1DJ,
+                                input$artist_years_range_1DJ,
+                                input$artist_all_other_1DJ)
+    })
+    return(ret_val)
+  }
+  
+  output$artist_history_plot_1DJ <- renderPlot({
+    artist_history<-process_artists_1DJ()
+    gg<-artist_history %>% ggplot(aes(x=AirDate,y=Spins,fill=ShowName))+geom_col()
+    gg<-gg+labs(title=paste("Number of",input$artist_selection_1DJ,"plays every quarter by DJ"),
+                caption=HOST_URL)
+    gg<-gg+theme_solarized_2(light = FALSE) + scale_colour_solarized("red")
+    gg<-gg+scale_x_yearqtr(breaks = seq(from = min(artist_history$AirDate), 
+                                        to = max(artist_history$AirDate),
+                                        by = 1),
+                           format = "%YQ%q")
+    gg<-gg+ theme(plot.background = element_rect(fill="black"))
+    gg
+  },bg="black")
+  output$top_songs_for_artist_1DJ<-renderTable({
+    top_songs_for_artist(input$artist_selection_1DJ,input$artist_years_range_1DJ)
+  })
+  output$artist_variants<-renderTable({
+    playlists %>% 
+      filter(ArtistToken %in% input$artist_selection_1DJ) %>% 
+      select(Artist) %>% 
+      unique()
+  })
+  #---------------------- multi artist tab -----------------------
+  reactive_multi_artists<-reactive({
+    input$artist_selection_multi
+    input$artist_years_range_multi
+    isolate({
+      withProgress({
+        setProgress(message = "Processing...")
+        #multi_tokens<-word(input$multi_artists,1:50) %>% na.omit() %>% as.character()
+        ret_val<-play_count_by_artist(input$artist_selection_multi,
+                                      input$artist_years_range_multi)
+      })
+    })
+    return(ret_val)
+  })
+  updateSelectizeInput( session=session,
+                        inputId = "artist_selection_multi", 
+                        choices = all_artisttokens, 
+                        server = TRUE,
+                        selected=default_artist_multi
+  )
+  
+  output$artist_variants_multi<-renderTable({
+    playlists %>% 
+      filter(ArtistToken %in% input$artist_selection_multi) %>% 
+      select(Artist) %>% 
+      unique()
+  })
+  
+  output$debug_multi<-renderPrint({
+    input$artist_selection_multi
+  })
+  
+  output$multi_artist_history_plot <- renderPlot({bg="black"
+  multi_artist_history<-reactive_multi_artists()
+  gg<-multi_artist_history %>% ggplot(aes(x=AirDate,y=Spins,fill=ArtistToken))+geom_col()
+  gg<-gg+labs(title=paste("Annual Plays by Artist"),caption=HOST_URL)
+  gg<- gg+ theme_economist()
+  #gg<-gg+theme_solarized_2(light = FALSE) + scale_colour_solarized("red")
+  gg<-gg+scale_x_continuous()
+  #gg<-gg+ theme(plot.background = element_rect(fill="black"))
+  gg
+  },bg="black")
+  
+  output$multi_artist_history_plot_2 <- renderPlot({
+    multi_artist_history<-reactive_multi_artists()
+    gg<-multi_artist_history %>% ggplot(aes(x=AirDate,y=Spins,fill=ArtistToken))+geom_col()
+    gg<-gg+labs(title=paste("Annual Plays by Artist"),caption=HOST_URL)
+    #gg<- gg+ theme_economist()
+    gg<-gg+theme_solarized_2(light = FALSE) + scale_colour_solarized("red")    
+    gg<-gg+ theme(plot.background = element_rect(fill="black"),legend.background = element_rect(fill="black"))
+    gg<-gg+scale_x_continuous()
+    gg<-gg+theme(legend.position = "top")
+    gg
+  },bg="black")
+  
+  output$multi_artist_history_plot_3 <- renderPlot({
+    multi_artist_history<-reactive_multi_artists()
+    gg<-multi_artist_history %>% ggplot(aes(x=AirDate,y=Spins,fill=ArtistToken))+geom_col(position='dodge',width=0.4)
+    gg<-gg+labs(title=paste("Annual Plays by Artist"),caption=HOST_URL)
+    #gg<- gg+ theme_economist()
+    gg<-gg+theme_solarized_2(light = FALSE) + scale_colour_solarized("red")
+    gg<-gg+ theme(plot.background = element_rect(fill="black"))
+    gg<-gg+scale_x_continuous()
+    gg
+  },bg="black")
+  
+  output$multi_artist_history_plot_4 <- renderPlot({
+    multi_artist_history<-reactive_multi_artists()
+    gg<-multi_artist_history %>% ggplot(aes(x=AirDate,y=Spins,fill=ArtistToken))+ geom_col()
+    gg<-gg+ facet_grid(~ArtistToken)
+    gg<-gg+labs(title=paste("Annual Plays by Artist"),caption=HOST_URL)
+    #gg<- gg+ theme_economist()
+    gg<-gg+theme_solarized_2(light = FALSE) + scale_colour_solarized("red")
+    gg<-gg+ theme(plot.background = element_rect(fill="black"))
+    gg<-gg+scale_x_continuous() + theme(legend.position = "none")
+    
+    gg
+  },bg="black")
   
 }
 # -------------- CREATE SHINY APP  -----------------------------------------------------------
