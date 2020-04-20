@@ -1,3 +1,4 @@
+# ----------------- LOAD LIBRARIES ----------------------
 library(shiny)
 library(shinycssloaders)
 library(shinythemes)
@@ -21,8 +22,9 @@ load('djSimilarity.RData')
 load('djdtm.RData')
 source("wordcloud2a.r")
 
-#playlists <- playlists %>% mutate_if(is.character,str_squish)
+# ----------------- DO SETUP ----------------------
 
+#playlists <- playlists %>% mutate_if(is.character,str_squish)
 default_song<-"Help"
 default_artist<-'Abba'
 default_artist_multi<-c('Abba','Beatles')
@@ -49,7 +51,7 @@ playlists<-playlists %>%
   ungroup() %>% 
   mutate(artist_song=paste(ArtistToken," - ",Title))
 
-# Define UI for dataset viewer app ----
+# ----------------- DEFINE USER INTERFACE ----------------------
 ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkly"),
                  # -- Add Tracking JS File 
                  #rest of UI doesn't initiate unless tab is clicked on if the code below runs
@@ -188,7 +190,7 @@ ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkl
                  ) # end DJ tab
 ) # end UI
 
-# --------------SERVER -----------------------------------------------------------
+# ----------------- DEFINE SERVER ----------------------
 server <- function(input, output) {
   # ----------------- STUFF FOR STATION TAB -----------------------------
   get_top_artists<-memoise(function(onAir="ALL",years_range = c(2010,2012)) {
@@ -242,7 +244,6 @@ server <- function(input, output) {
     return(top_songs)
   })
   
-  # Return the requested dataset ----
   # Note that we use eventReactive() here, which depends on
   # input$update (the action button), so that the output is only
   # updated when the user clicks the button
@@ -360,7 +361,7 @@ server <- function(input, output) {
     songs
   })
   # ----------------- OUTPUT SECTION --------------------
-  # station tab
+  # ----------- station tab ----------------
   output$cloud <- renderWordcloud2({
     top_artists <-top_artists_reactive()
     wordcloud2a(top_artists,
@@ -382,7 +383,7 @@ server <- function(input, output) {
   output$play_count_2 <- renderText({
     paste("Songs Played: ")
   })
-  # DJs tab
+  # ----------- DJs tab --------------------
   output$DJ_date_slider <- renderUI({
     sliderInput("DJ_years_range",
                 "Year Range:",
@@ -496,6 +497,7 @@ server <- function(input, output) {
     dj2<-filter(DJKey,ShowName==input$show_selection_4) %>% pull(DJ)
     artists_in_common(dj1,dj2)
   })
+  
   
 }
 # -------------- CREATE SHINY APP  -----------------------------------------------------------
