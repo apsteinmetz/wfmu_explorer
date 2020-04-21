@@ -923,6 +923,7 @@ server <- function(input, output, session) {
     song_history<-process_songs()
     gg<-song_history %>% ggplot(aes(x=as.factor(as.numeric(AirDate)),y=Spins,fill=ShowName))+geom_col()
     gg<-gg+labs(title=paste("Number of",input$song_selection,"plays every quarter by DJ"),
+                x = "",
                 caption=HOST_URL)
     gg<-gg+ theme_solarized_2(light = FALSE) + scale_colour_solarized("red")
     gg<-gg+ theme(plot.background = element_rect(fill="black"),legend.background = element_rect(fill="black"))
@@ -932,6 +933,7 @@ server <- function(input, output, session) {
   output$top_artists_for_song<-renderTable({
     top_artists_for_song(input$song_selection,input$song_years_range)
   })
+  
 }
 # -------------- CREATE SHINY APP  -----------------------------------------------------------
 shinyApp(ui, server)
