@@ -23,7 +23,7 @@ load('djdtm.RData')
 source("wordcloud2a.r")
 
 # ----------------- DO SETUP ----------------------
-
+HOST_URL<- "wfmu.servebeer.com"
 #playlists <- playlists %>% mutate_if(is.character,str_squish)
 default_song<-"Help"
 default_artist<-'Abba'
@@ -470,24 +470,31 @@ server <- function(input, output, session) {
       summarise(Spins=n()) %>% 
       arrange(AirDate)
     
-    pc1<- pc %>% 
+  # pc1 <- pc %>% left_join(DJKey) %>% select(AirDate,Spins,ShowName)
+  # pc1$ShowName <- as_factor(pc1$ShowName)
+  # pc1 <- pc1 %>%  uncount(Spins)
+  # pc1$ShowName <- fct_lump_min(pc1$ShowName,3)
+  # pc3 <- pc1 %>% group_by(AirDate,ShowName) %>% summarise(Spins=n())
+  
+    pc1<- pc %>%
       filter(Spins>=threshold)
-    
+
     #lump together all DJ's who played the artist less than 'threshold' times
     pc2<- pc %>%
-      ungroup() %>% 
-      filter(Spins<threshold) %>% 
-      group_by(AirDate) %>% 
-      summarise(Spins=sum(Spins)) %>% 
+      ungroup() %>%
+      filter(Spins<threshold) %>%
+      group_by(AirDate) %>%
+      summarise(Spins=sum(Spins)) %>%
       mutate(ShowName='AllOther')
-    
-    pc3<-pc1 %>% 
-      left_join(DJKey,by='DJ') %>% 
-      select(AirDate,Spins,ShowName) %>% 
+
+    pc3<-pc1 %>%
+      left_join(DJKey,by='DJ') %>%
+      select(AirDate,Spins,ShowName) %>%
       full_join(pc2) %>%
       ungroup()
-    
-    return(pc3)
+
+   return(pc3)
+
   })
   
   play_count_by_artist<-memoise(function(artist_tokens= c("Abba","Beatles"),years_range=c(2012,2015)){
@@ -501,7 +508,6 @@ server <- function(input, output, session) {
       group_by(AirDate,ArtistToken) %>% 
       summarise(Spins=n()) %>% 
       arrange(AirDate)
-    
     return(pc)
   })
   
@@ -692,15 +698,15 @@ server <- function(input, output, session) {
   
   output$artist_history_plot_1DJ <- renderPlot({
     artist_history<-process_artists_1DJ()
-    gg<-artist_history %>% ggplot(aes(x=AirDate,y=Spins,fill=ShowName))+geom_col()
-    gg<-gg+labs(title=paste("Number of",input$artist_selection_1DJ,"plays every quarter by DJ"),
-                caption=HOST_URL)
-    gg<-gg+theme_solarized_2(light = FALSE) + scale_colour_solarized("red")
-    gg<-gg+scale_x_yearqtr(breaks = seq(from = min(artist_history$AirDate), 
-                                        to = max(artist_history$AirDate),
-                                        by = 1),
-                           format = "%YQ%q")
-    gg<-gg+ theme(plot.background = element_rect(fill="black"))
+    gg<-artist_history %>% 
+      ggplot(aes(factor(as.numeric(AirDate)),Spins,fill=ShowName)) + 
+      geom_col() + 
+      scale_x_discrete(breaks=sort(unique(round(as.numeric(artist_history$AirDate)))))
+    gg <- gg + labs(title=paste("Number of",input$artist_selection_1DJ,"plays every quarter by DJ"),
+                    x = "Date",
+                    caption=HOST_URL)
+    gg<-gg + theme_solarized_2(light = FALSE) + scale_colour_solarized("red")
+    gg<-gg + theme(plot.background = element_rect(fill="black"))
     gg
   },bg="black")
   output$top_songs_for_artist_1DJ<-renderTable({
