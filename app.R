@@ -280,6 +280,45 @@ ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkl
                                      )
                                      
                             )
+                 ),
+                 # --------- SONGS TAB ----------------------------------
+                 tabPanel("Songs",
+                          titlePanel("Find Songs"),
+                          sidebarLayout(
+                            # Sidebar with a slider and selection inputs
+                            sidebarPanel(
+                              h4('1) Start by narrowing down the list of songs.'),
+                              h4('Type all or part of the song name then click "Find Songs."'),
+                              textInput("song_letters", label = h4("Give me a clue!"), value = default_song),
+                              actionButton("song_update_1","Find Songs"),
+                              h4('2) Click below to choose the specific song(s).'),
+                              h5('You can select more than one'),
+                              uiOutput('SelectSong'),
+                              h4('3) Change the date range?'),
+                              sliderInput("song_years_range",
+                                          "Year Range:",
+                                          min = min_year,
+                                          max = max_year,
+                                          sep = "",
+                                          value = c(2002,max_year)),
+                              fluidRow(
+                                h4('4) Change threshold to show DJ?'),
+                                selectInput("song_all_other",
+                                            "Threshold of Minimum Plays to show DJ",
+                                            selected = 3,
+                                            choices=1:9)
+                              )
+                            ),
+                            
+                            mainPanel(
+                              fluidRow(
+                                h4('Song Plays per Quarter'),
+                                withSpinner(plotOutput("song_history_plot")),
+                                h4('Most Played Artists for this Song'),
+                                tableOutput('top_artists_for_song')
+                              )
+                            )
+                          )
                  )
 ) # end UI
 
@@ -518,6 +557,52 @@ server <- function(input, output, session) {
       filter(AirDate>=as.Date(paste0(years_range[1],"-1-1"))) %>%  
       filter(AirDate<=as.Date(paste0(years_range[2],"-12-31"))) %>%  
       group_by(Title) %>% 
+      summarise(count=n()) %>% 
+      arrange(desc(count))
+    return(ts)
+  })
+  
+  # ---------------FUNCTIONS FOR SONG TAB -----------------------------
+  song_play_count_by_DJ<-memoise(function(songs,years_range,threshold=3){
+    years_range <- c(round(years_range[1]),round(years_range[2]))
+    pc<- playlists %>% 
+      ungroup() %>% 
+      filter(AirDate>=as.Date(paste0(years_range[1],"-1-1"))) %>%  
+      filter(AirDate<=as.Date(paste0(years_range[2],"-12-31"))) %>%  
+      mutate(DJ=as.character(DJ)) %>% 
+      filter(Title %in% songs) %>% 
+      mutate(AirDate=as.yearqtr(AirDate))  %>% 
+      group_by(AirDate,DJ) %>% 
+      summarise(Spins=n()) %>% 
+      arrange(AirDate)
+    
+    pc1<- pc %>% 
+      filter(Spins>=threshold)
+    
+    #lump together all DJ's who played the artist less than 'threshold' times
+    pc2<- pc %>%
+      ungroup() %>% 
+      filter(Spins<threshold) %>% 
+      group_by(AirDate) %>% 
+      summarise(Spins=sum(Spins)) %>% 
+      mutate(ShowName='AllOther')
+    
+    pc3<-pc1 %>% 
+      left_join(DJKey,by='DJ') %>% 
+      select(AirDate,Spins,ShowName) %>% 
+      full_join(pc2) %>%
+      ungroup()
+    
+    return(pc3)
+  })
+  
+  top_artists_for_song<-memoise(function(song,years_range=c(2012,2015)){
+    years_range <- c(round(years_range[1]),round(years_range[2]))
+    ts<-playlists %>% 
+      filter(Title %in% song) %>% 
+      filter(AirDate>=as.Date(paste0(years_range[1],"-1-1"))) %>%  
+      filter(AirDate<=as.Date(paste0(years_range[2],"-12-31"))) %>%  
+      group_by(ArtistToken) %>% 
       summarise(count=n()) %>% 
       arrange(desc(count))
     return(ts)
@@ -797,6 +882,56 @@ server <- function(input, output, session) {
     gg
   },bg="black")
   
+  # ------------------ SONG TAB -----------------
+  reactive_songs_letters<-reactive({
+    input$song_update_1
+    isolate({      
+      withProgress({
+        setProgress(message = "Processing...")
+        ret_val<-playlists %>%
+          ungroup() %>%
+          filter(grepl(str_to_title(input$song_letters),Title)) %>% 
+          select(Title) %>%
+          distinct() %>%
+          arrange(Title) %>%
+          pull(Title)
+      })
+    })
+    return(ret_val)
+  })
+  
+  
+  process_songs<-function(){
+    withProgress({
+      setProgress(message = "Processing...")
+      ret_val<-song_play_count_by_DJ(input$song_selection,
+                                     input$song_years_range,
+                                     input$song_all_other)
+    })
+    return(ret_val)
+  }
+  
+  output$SelectSong<-renderUI({
+    song_choices<-reactive_songs_letters()
+    selectizeInput("song_selection", h5("Select song"),
+                   choices = song_choices,
+                   selected= default_song,
+                   multiple = TRUE
+    )
+  })
+  output$song_history_plot <- renderPlot({
+    song_history<-process_songs()
+    gg<-song_history %>% ggplot(aes(x=as.factor(as.numeric(AirDate)),y=Spins,fill=ShowName))+geom_col()
+    gg<-gg+labs(title=paste("Number of",input$song_selection,"plays every quarter by DJ"),
+                caption=HOST_URL)
+    gg<-gg+ theme_solarized_2(light = FALSE) + scale_colour_solarized("red")
+    gg<-gg+ theme(plot.background = element_rect(fill="black"),legend.background = element_rect(fill="black"))
+    gg <- gg + scale_x_discrete(breaks=sort(unique(round(as.numeric(song_history$AirDate)))))
+    gg
+  },bg="black")
+  output$top_artists_for_song<-renderTable({
+    top_artists_for_song(input$song_selection,input$song_years_range)
+  })
 }
 # -------------- CREATE SHINY APP  -----------------------------------------------------------
 shinyApp(ui, server)
