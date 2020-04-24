@@ -23,7 +23,7 @@ The web scraping and data-cleaning process was the most time consuming part of t
 
 There is a final step which is really a judgement call.  Many DJs have signature songs to open and/or close their shows.  Including these skews the play count for songs.  I have chosen to strip those out, or try to.  Songs where one DJ accounts for just about all the plays are stripped out as well.  This is the ultimate data set I use here.
 
-The end result is an reasonably accurate but incomplete record of all the playlists available at WFMU.ORG as of mid-January 2019.  
+The end result is an reasonably accurate but incomplete record of all the playlists available at WFMU.ORG as of the last web scraping.
 
 The code used for scraping,cleaning and analyzing is available at https://github.com/apsteinmetz/wfmu.
 

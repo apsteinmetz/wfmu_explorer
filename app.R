@@ -319,7 +319,51 @@ ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkl
                               )
                             )
                           )
+                 ),
+                 #--------------- Playlists --------------------
+                 tabPanel("Playlists",
+                          titlePanel("Get a Playlist"),
+                          sidebarLayout(
+                            sidebarPanel(
+                              fluidRow(
+                                h4("Choose a Show:"),
+                                selectInput("show_selection_5", "Show Name:",
+                                            choices = DJKey$ShowName,
+                                            selected = 'Teenage Wasteland'),
+                                h4('Choose Date Range:'), #just to make some space for calendar
+                                dateRangeInput("playlist_date_range",
+                                               "Date Range:",
+                                               min=min(playlists$AirDate),
+                                               max = max(playlists$AirDate)),
+                                actionButton("reset_playlist_date_range",
+                                             "Reset Dates to Full History",
+                                             color="blue"),
+                                h4("Important Note:"),
+                                h5("I have stripped out signature songs"),
+                                h5("that a DJ might play every show"),
+                                h5("as it distorts the overall popularity"),
+                                h5("measures in the data set.")
+                              )
+                            ),
+                            
+                            # Show playlists
+                            mainPanel(
+                              fluidRow(
+                                h4("Playlist(s)"),
+                                #verbatimTextOutput("debug_date"),
+                                withSpinner(DT::dataTableOutput("playlist_table")),
+                                h4()
+                              )
+                            )
+                          )
+                 ),
+                 # --------- About/ ----------------------------------
+                 tabPanel("About",
+                          mainPanel(
+                            includeMarkdown("about.md")
+                          )
                  )
+                 
 ) # end UI
 
 
@@ -509,15 +553,15 @@ server <- function(input, output, session) {
       summarise(Spins=n()) %>% 
       arrange(AirDate)
     
-  # pc1 <- pc %>% left_join(DJKey) %>% select(AirDate,Spins,ShowName)
-  # pc1$ShowName <- as_factor(pc1$ShowName)
-  # pc1 <- pc1 %>%  uncount(Spins)
-  # pc1$ShowName <- fct_lump_min(pc1$ShowName,3)
-  # pc3 <- pc1 %>% group_by(AirDate,ShowName) %>% summarise(Spins=n())
-  
+    # pc1 <- pc %>% left_join(DJKey) %>% select(AirDate,Spins,ShowName)
+    # pc1$ShowName <- as_factor(pc1$ShowName)
+    # pc1 <- pc1 %>%  uncount(Spins)
+    # pc1$ShowName <- fct_lump_min(pc1$ShowName,3)
+    # pc3 <- pc1 %>% group_by(AirDate,ShowName) %>% summarise(Spins=n())
+    
     pc1<- pc %>%
       filter(Spins>=threshold)
-
+    
     #lump together all DJ's who played the artist less than 'threshold' times
     pc2<- pc %>%
       ungroup() %>%
@@ -525,15 +569,15 @@ server <- function(input, output, session) {
       group_by(AirDate) %>%
       summarise(Spins=sum(Spins)) %>%
       mutate(ShowName='AllOther')
-
+    
     pc3<-pc1 %>%
       left_join(DJKey,by='DJ') %>%
       select(AirDate,Spins,ShowName) %>%
       full_join(pc2) %>%
       ungroup()
-
-   return(pc3)
-
+    
+    return(pc3)
+    
   })
   
   play_count_by_artist<-memoise(function(artist_tokens= c("Abba","Beatles"),years_range=c(2012,2015)){
@@ -607,7 +651,23 @@ server <- function(input, output, session) {
       arrange(desc(count))
     return(ts)
   })
+  # ------------------ stuff for playlists tab --------------
+  get_playlists<-memoise(function(show,date_range){
+    date_range=c(as.Date("2017-01-01"),as.Date("2017-02-01"))
+    subset_playlists<-DJKey %>% 
+      filter(ShowName %in% show) %>% 
+      select(DJ) %>% 
+      left_join(playlists) %>% 
+      filter(AirDate>=date_range[1]) %>% 
+      filter(AirDate<=date_range[2]) %>%
+      select(-artist_song,-DJ) %>% 
+      as_tibble()
+    if (nrow(subset_playlists)==0) subset_playlists<- data.frame(Title="No shows in this date range.")
+    return(subset_playlists)
+  })
   
+  
+  top_songs_static <- get_top_songs()
   # ---------------OUTPUT SECTION --------------------
   # ------------------- station tab ----------------
   output$cloud <- renderWordcloud2({
@@ -932,6 +992,24 @@ server <- function(input, output, session) {
   },bg="black")
   output$top_artists_for_song<-renderTable({
     top_artists_for_song(input$song_selection,input$song_years_range)
+  })
+  
+  # ------------------- playlists TAB--------------------
+  observe({
+    ss5<-filter(DJKey,ShowName==input$show_selection_5)
+    input$reset_playlist_date_range
+    updateDateRangeInput(session=session,"playlist_date_range",
+                         "Date Range:",
+                         start =  ss5 %>% pull(FirstShow),
+                         end = ss5 %>% pull(LastShow),
+                         min = ss5 %>% pull(FirstShow),
+                         max = ss5 %>% pull(LastShow)
+    )
+    output$playlist_table<-DT::renderDataTable({
+      get_playlists(input$show_selection_5,input$playlist_date_range)
+      print(get_playlists(input$show_selection_5,input$playlist_date_range)) # DEBUG
+    })
+    
   })
   
 }
