@@ -540,12 +540,7 @@ server <- function(input, output, session) {
   })
   # ---------------FUNCTIONS FOR ARTIST TAB -----------------------------
   
-  # space out x-axis labels on quarterly plots by hand
-  make_breaks <- function(vector, n) {
-    vector <- sort(unique(vector))
-    vector[seq(1, length(vector), n)] 
-  }
-  
+
   play_count_by_DJ<-memoise(function(artist_token = "Abba",years_range = c(2016,2019),threshold=3){
     years_range <- c(round(years_range[1]),round(years_range[2]))
     pc<- playlists %>% 
@@ -855,8 +850,7 @@ server <- function(input, output, session) {
     gg<-artist_history %>% 
       ggplot(aes(factor(AirDate),Spins,fill=ShowName)) + 
       geom_col() + 
-      scale_x_discrete(breaks=make_breaks(as.character(artist_history$AirDate),
-                                          diff(input$artist_years_range_1DJ)))
+      scale_x_discrete(guide = guide_axis(check.overlap = TRUE))
     gg <- gg + labs(title=paste("Number of",input$artist_selection_1DJ,"plays every quarter by DJ"),
                     x = "Date",
                     caption=HOST_URL)
@@ -993,8 +987,7 @@ server <- function(input, output, session) {
     song_history<-process_songs()
     gg<-song_history %>% 
       ggplot(aes(x=as.factor(AirDate),y=Spins,fill=ShowName)) + geom_col() + 
-      scale_x_discrete(breaks=make_breaks(as.character(song_history$AirDate),
-                                          diff(input$song_years_range)))
+      scale_x_discrete(guide = guide_axis(check.overlap = TRUE))
     gg<-gg+labs(title=paste("Number of",input$song_selection,"plays every quarter by DJ"),
                 x = "",
                 caption=HOST_URL)
