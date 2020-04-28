@@ -51,7 +51,7 @@ playlists<-playlists %>%
   ungroup() %>% 
   mutate(artist_song=paste(ArtistToken," - ",Title))
 
-# ----------------- DEFINE USER INTERFACE ----------------------
+# ----------------- DEFINE USER INTERFACE ------------------------------------------------------------
 ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkly"),
                  # -- Add Tracking JS File 
                  #rest of UI doesn't initiate unless tab is clicked on if the code below runs
@@ -198,10 +198,12 @@ ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkl
                                        sidebarPanel(
                                          fluidRow(
                                            h4('Artist names reduced to token of first two words.'),
-                                           selectizeInput("artist_selection_1DJ", h4("Select one or more artists"),
-                                                          choices = NULL,
-                                                          multiple = TRUE,
-                                                          options = list(closeAfterSelect=TRUE)
+                                           selectInput("artist_selection_1DJ", h4("Select one or more artists"),
+                                                       choices = NULL,
+                                                       multiple = TRUE,
+                                                      # options = list(closeAfterSelect=TRUE),
+                                                       selectize = TRUE
+                                                       
                                                           #selected=default_artist
                                                           #options = list(placeholder = 'select artist(s)')
                                            ),
@@ -333,7 +335,7 @@ ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkl
                                 h4('Choose Date Range:'), #just to make some space for calendar
                                 dateRangeInput("playlist_date_range",
                                                "Date Range:",
-                                               min=min(playlists$AirDate),
+                                               min= min(playlists$AirDate),
                                                max = max(playlists$AirDate)),
                                 actionButton("reset_playlist_date_range",
                                              "Reset Dates to Full History",
@@ -350,7 +352,7 @@ ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkl
                             mainPanel(
                               fluidRow(
                                 h4("Playlist(s)"),
-                                #verbatimTextOutput("debug_date"),
+                                textOutput("debug_date"),
                                 withSpinner(DT::dataTableOutput("playlist_table")),
                                 h4()
                               )
@@ -365,9 +367,6 @@ ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkl
                  )
                  
 ) # end UI
-
-
-
 
 # ----------------- DEFINE SERVER ----------------------------------------------------------------
 server <- function(input, output, session) {
@@ -540,6 +539,13 @@ server <- function(input, output, session) {
     songs
   })
   # ---------------FUNCTIONS FOR ARTIST TAB -----------------------------
+  
+  # space out x-axis labels on quarterly plots by hand
+  make_breaks <- function(vector, n) {
+    vector <- sort(unique(vector))
+    vector[seq(1, length(vector), n)] 
+  }
+  
   play_count_by_DJ<-memoise(function(artist_token = "Abba",years_range = c(2016,2019),threshold=3){
     years_range <- c(round(years_range[1]),round(years_range[2]))
     pc<- playlists %>% 
@@ -553,7 +559,8 @@ server <- function(input, output, session) {
       summarise(Spins=n()) %>% 
       arrange(AirDate)
     
-    # pc1 <- pc %>% left_join(DJKey) %>% select(AirDate,Spins,ShowName)
+
+        # pc1 <- pc %>% left_join(DJKey) %>% select(AirDate,Spins,ShowName)
     # pc1$ShowName <- as_factor(pc1$ShowName)
     # pc1 <- pc1 %>%  uncount(Spins)
     # pc1$ShowName <- fct_lump_min(pc1$ShowName,3)
@@ -575,6 +582,8 @@ server <- function(input, output, session) {
       select(AirDate,Spins,ShowName) %>%
       full_join(pc2) %>%
       ungroup()
+    #pad dates for plotting
+    pc3 <- enframe(seq(min(pc$AirDate),max(pc$AirDate),by=0.25),name=NULL,value="AirDate") %>% full_join(pc3)
     
     return(pc3)
     
@@ -607,7 +616,7 @@ server <- function(input, output, session) {
   })
   
   # ---------------FUNCTIONS FOR SONG TAB -----------------------------
-  song_play_count_by_DJ<-memoise(function(songs,years_range,threshold=3){
+  song_play_count_by_DJ<-memoise(function(songs = "Help",years_range = c(2016,2019),threshold=3){
     years_range <- c(round(years_range[1]),round(years_range[2]))
     pc<- playlists %>% 
       ungroup() %>% 
@@ -619,6 +628,8 @@ server <- function(input, output, session) {
       group_by(AirDate,DJ) %>% 
       summarise(Spins=n()) %>% 
       arrange(AirDate)
+    
+    
     
     pc1<- pc %>% 
       filter(Spins>=threshold)
@@ -636,6 +647,7 @@ server <- function(input, output, session) {
       select(AirDate,Spins,ShowName) %>% 
       full_join(pc2) %>%
       ungroup()
+    pc3 <- enframe(seq(min(pc$AirDate),max(pc$AirDate),by=0.25),name=NULL,value="AirDate") %>% full_join(pc3)
     
     return(pc3)
   })
@@ -665,9 +677,6 @@ server <- function(input, output, session) {
     if (nrow(subset_playlists)==0) subset_playlists<- data.frame(Title="No shows in this date range.")
     return(subset_playlists)
   })
-  
-  
-  top_songs_static <- get_top_songs()
   # ---------------OUTPUT SECTION --------------------
   # ------------------- station tab ----------------
   output$cloud <- renderWordcloud2({
@@ -844,9 +853,10 @@ server <- function(input, output, session) {
   output$artist_history_plot_1DJ <- renderPlot({
     artist_history<-process_artists_1DJ()
     gg<-artist_history %>% 
-      ggplot(aes(factor(as.numeric(AirDate)),Spins,fill=ShowName)) + 
+      ggplot(aes(factor(AirDate),Spins,fill=ShowName)) + 
       geom_col() + 
-      scale_x_discrete(breaks=sort(unique(round(as.numeric(artist_history$AirDate)))))
+      scale_x_discrete(breaks=make_breaks(as.character(artist_history$AirDate),
+                                          diff(input$artist_years_range_1DJ)))
     gg <- gg + labs(title=paste("Number of",input$artist_selection_1DJ,"plays every quarter by DJ"),
                     x = "Date",
                     caption=HOST_URL)
@@ -981,13 +991,15 @@ server <- function(input, output, session) {
   })
   output$song_history_plot <- renderPlot({
     song_history<-process_songs()
-    gg<-song_history %>% ggplot(aes(x=as.factor(as.numeric(AirDate)),y=Spins,fill=ShowName))+geom_col()
+    gg<-song_history %>% 
+      ggplot(aes(x=as.factor(AirDate),y=Spins,fill=ShowName)) + geom_col() + 
+      scale_x_discrete(breaks=make_breaks(as.character(song_history$AirDate),
+                                          diff(input$song_years_range)))
     gg<-gg+labs(title=paste("Number of",input$song_selection,"plays every quarter by DJ"),
                 x = "",
                 caption=HOST_URL)
     gg<-gg+ theme_solarized_2(light = FALSE) + scale_colour_solarized("red")
     gg<-gg+ theme(plot.background = element_rect(fill="black"),legend.background = element_rect(fill="black"))
-    gg <- gg + scale_x_discrete(breaks=sort(unique(round(as.numeric(song_history$AirDate)))))
     gg
   },bg="black")
   output$top_artists_for_song<-renderTable({
@@ -1004,6 +1016,9 @@ server <- function(input, output, session) {
                          end = ss5 %>% pull(LastShow),
                          min = ss5 %>% pull(FirstShow),
                          max = ss5 %>% pull(LastShow)
+    )
+    output$debug_date <- renderText(
+      filter(DJKey,ShowName==input$show_selection_5) %>% pull(FirstShow) %>% print()
     )
     output$playlist_table<-DT::renderDataTable({
       get_playlists(input$show_selection_5,input$playlist_date_range)
