@@ -198,14 +198,11 @@ ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkl
                                        sidebarPanel(
                                          fluidRow(
                                            h4('Artist names reduced to token of first two words.'),
-                                           selectInput("artist_selection_1DJ", h4("Select one or more artists"),
-                                                       choices = NULL,
-                                                       multiple = TRUE,
-                                                      # options = list(closeAfterSelect=TRUE),
-                                                       selectize = TRUE
-                                                       
-                                                          #selected=default_artist
-                                                          #options = list(placeholder = 'select artist(s)')
+                                           h4("Select one or more artists"),
+                                           selectizeInput("artist_selection_1DJ", 
+                                                          label = NULL,
+                                                          choices = NULL,
+                                                          multiple = TRUE
                                            ),
                                            h4('Change the date range to include?'),
                                            sliderInput("artist_years_range_1DJ",
@@ -215,7 +212,8 @@ ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkl
                                                        sep = "",
                                                        step=1,
                                                        round=TRUE,
-                                                       value = c(2002,max_year)),
+                                                       value = c(2002,max_year)
+                                                       ),
                                            h4('Change threshold to show DJ name?'),
                                            selectInput("artist_all_other_1DJ",
                                                        "Threshold of Minimum Plays to show DJ",
@@ -540,7 +538,6 @@ server <- function(input, output, session) {
   })
   # ---------------FUNCTIONS FOR ARTIST TAB -----------------------------
   
-
   play_count_by_DJ<-memoise(function(artist_token = "Abba",years_range = c(2016,2019),threshold=3){
     years_range <- c(round(years_range[1]),round(years_range[2]))
     pc<- playlists %>% 
@@ -811,7 +808,7 @@ server <- function(input, output, session) {
   })
   
   
-  # ------------------- artist tab
+  # ------------------- artist tab -------------------------------------------
   #---------------------- single artist tab-----------------------------------
   reactive_artists_1DJ<-reactive({
     input$artist_update_1DJ
@@ -979,7 +976,6 @@ server <- function(input, output, session) {
     song_choices<-reactive_songs_letters()
     selectizeInput("song_selection", h5("Select song"),
                    choices = song_choices,
-                   selected= default_song,
                    multiple = TRUE
     )
   })
