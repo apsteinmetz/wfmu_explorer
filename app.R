@@ -578,7 +578,7 @@ server <- function(input, output, session) {
       full_join(pc2) %>%
       ungroup()
     #pad dates for plotting
-    pc3 <- enframe(seq(min(pc$AirDate),max(pc$AirDate),by=0.25),name=NULL,value="AirDate") %>% full_join(pc3)
+#    pc3 <- enframe(seq(min(pc$AirDate),max(pc$AirDate),by=0.25),name=NULL,value="AirDate") %>% full_join(pc3)
     
     return(pc3)
     
@@ -642,7 +642,7 @@ server <- function(input, output, session) {
       select(AirDate,Spins,ShowName) %>% 
       full_join(pc2) %>%
       ungroup()
-    pc3 <- enframe(seq(min(pc$AirDate),max(pc$AirDate),by=0.25),name=NULL,value="AirDate") %>% full_join(pc3)
+#    pc3 <- enframe(seq(min(pc$AirDate),max(pc$AirDate),by=0.25),name=NULL,value="AirDate") %>% full_join(pc3)
     
     return(pc3)
   })
@@ -848,9 +848,9 @@ server <- function(input, output, session) {
   output$artist_history_plot_1DJ <- renderPlot({
     artist_history<-process_artists_1DJ()
     gg<-artist_history %>% 
-      ggplot(aes(factor(AirDate),Spins,fill=ShowName)) + 
-      geom_col() + 
-      scale_x_discrete(guide = guide_axis(check.overlap = TRUE))
+      ggplot(aes(AirDate,Spins,fill=ShowName)) + 
+      geom_col(orientation = "x") + 
+      scale_x_yearqtr(format = "%Yq%q",guide = guide_axis(check.overlap = TRUE))
     gg <- gg + labs(title=paste("Number of",input$artist_selection_1DJ,"plays every quarter by DJ"),
                     x = "Date",
                     caption=HOST_URL)
@@ -986,8 +986,9 @@ server <- function(input, output, session) {
   output$song_history_plot <- renderPlot({
     song_history<-process_songs()
     gg<-song_history %>% 
-      ggplot(aes(x=as.factor(AirDate),y=Spins,fill=ShowName)) + geom_col() + 
-      scale_x_discrete(guide = guide_axis(check.overlap = TRUE))
+      ggplot(aes(x=AirDate,y=Spins,fill=ShowName)) + 
+      geom_col(orientation = "x") + 
+      scale_x_yearqtr(format = "%Yq%q",guide = guide_axis(check.overlap = TRUE))
     gg<-gg+labs(title=paste("Number of",input$song_selection,"plays every quarter by DJ"),
                 x = "",
                 caption=HOST_URL)
