@@ -43,6 +43,8 @@ This site is powered by Shiny by RStudio (https://www.rstudio.com/) and written 
 -- Art Steinmetz (apsteinmetz@yahoo.com)
 
 ## Change log
+*Changes in 0.6 Corona virus update.  Rewrote almost entire app.  It broke after a number of R package updates.  I thought I was just updating the playlist data but tragedy ensued.  Lesson: sandbox even trival updates.  Switched to fancier worldcloud package.  Included a couple more DJs who have irregular playlist formats on the web site.  Many still missing.
+
 *Changes in 0.52: New Goth theme!
 
 *Changes in 0.51: Streamlined multi-artist selection tab.

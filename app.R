@@ -51,7 +51,7 @@ playlists<-playlists %>%
   ungroup() %>% 
   mutate(artist_song=paste(ArtistToken," - ",Title))
 
-# ----------------- DEFINE USER INTERFACE ------------------------------------------------------------
+#  DEFINE USER INTERFACE ===============================================================
 ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkly"),
                  # -- Add Tracking JS File 
                  #rest of UI doesn't initiate unless tab is clicked on if the code below runs
@@ -109,7 +109,7 @@ ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkl
                                          uiOutput("DJ_date_slider")
                                          #, actionButton("DJ_update","Update")
                                        ),
-                                       
+
                                        # Show Word Cloud
                                        mainPanel(
                                          fluidRow(
@@ -136,11 +136,11 @@ ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkl
                                                      choices = DJKey$ShowName,
                                                      selected = 'Teenage Wasteland')
                                        ),
-                                       
+
                                        # Show Word Cloud
                                        mainPanel(
                                          fluidRow(
-                                           h4('DJ Neighborhood') 
+                                           h4('DJ Neighborhood')
                                            , withSpinner(plotOutput("DJ_chord"))
                                          ),
                                          fluidRow(
@@ -199,7 +199,7 @@ ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkl
                                          fluidRow(
                                            h4('Artist names reduced to token of first two words.'),
                                            h4("Select one or more artists"),
-                                           selectizeInput("artist_selection_1DJ", 
+                                           selectizeInput("artist_selection_1DJ",
                                                           label = NULL,
                                                           choices = NULL,
                                                           multiple = TRUE
@@ -222,7 +222,7 @@ ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkl
                                            h4('Full artist names included in this token:'),
                                            tableOutput("artist_variants")
                                          )
-                                         
+
                                        ),
                                        mainPanel(
                                          fluidRow(
@@ -263,7 +263,7 @@ ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkl
                                            tableOutput("artist_variants_multi")
                                          )
                                        ),
-                                       
+
                                        mainPanel(
                                          fluidRow(
                                            h4("Artist Plays Per Year."),
@@ -276,9 +276,9 @@ ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkl
                                            h4()
                                          )
                                        )
-                                       
+
                                      )
-                                     
+
                             )
                  ),
                  # --------- SONGS TAB ----------------------------------
@@ -309,7 +309,7 @@ ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkl
                                             choices=1:9)
                               )
                             ),
-                            
+
                             mainPanel(
                               fluidRow(
                                 h4('Song Plays per Quarter'),
@@ -320,7 +320,7 @@ ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkl
                             )
                           )
                  ),
-                 #--------------- Playlists --------------------
+                # --------------- Playlists --------------------
                  tabPanel("Playlists",
                           titlePanel("Get a Playlist"),
                           sidebarLayout(
@@ -333,8 +333,11 @@ ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkl
                                 h4('Choose Date Range:'), #just to make some space for calendar
                                 dateRangeInput("playlist_date_range",
                                                "Date Range:",
-                                               min= min(playlists$AirDate),
-                                               max = max(playlists$AirDate)),
+                                               start = min(playlists$AirDate),
+                                               end = max(playlists$AirDate),
+                                               min = min(playlists$AirDate),
+                                               max = max(playlists$AirDate)
+                                ),
                                 actionButton("reset_playlist_date_range",
                                              "Reset Dates to Full History",
                                              color="blue"),
@@ -346,11 +349,11 @@ ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkl
                               )
                             ),
                             
+                            
                             # Show playlists
                             mainPanel(
                               fluidRow(
                                 h4("Playlist(s)"),
-                                textOutput("debug_date"),
                                 withSpinner(DT::dataTableOutput("playlist_table")),
                                 h4()
                               )
@@ -366,7 +369,7 @@ ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkl
                  
 ) # end UI
 
-# ----------------- DEFINE SERVER ----------------------------------------------------------------
+# DEFINE SERVER ===============================================================
 server <- function(input, output, session) {
   # -------------- FUNCTIONS FOR STATION TAB -----------------------------
   get_top_artists<-memoise(function(onAir="ALL",years_range = c(2010,2012)) {
@@ -656,17 +659,18 @@ server <- function(input, output, session) {
     return(ts)
   })
   # ------------------ stuff for playlists tab --------------
-  get_playlists<-memoise(function(show,date_range){
-    date_range=c(as.Date("2017-01-01"),as.Date("2017-02-01"))
+  get_playlists<-memoise(function(show= "Teenage Wasteland",
+                                  date_range=c(as.Date("2017-01-01"),as.Date("2017-02-01"))){
     subset_playlists<-DJKey %>% 
       filter(ShowName %in% show) %>% 
       select(DJ) %>% 
-      left_join(playlists) %>% 
+      left_join(playlists,by = "DJ") %>% 
       filter(AirDate>=date_range[1]) %>% 
       filter(AirDate<=date_range[2]) %>%
       select(-artist_song,-DJ) %>% 
       as_tibble()
-    if (nrow(subset_playlists)==0) subset_playlists<- data.frame(Title="No shows in this date range.")
+    # print(date_range) # DEBUG
+    if (nrow(subset_playlists)==0) subset_playlists <- data.frame(Title="No shows in this date range.")
     return(subset_playlists)
   })
   # ---------------OUTPUT SECTION --------------------
@@ -975,6 +979,7 @@ server <- function(input, output, session) {
   output$SelectSong<-renderUI({
     song_choices<-reactive_songs_letters()
     selectizeInput("song_selection", h5("Select song"),
+                   selected = "Help",
                    choices = song_choices,
                    multiple = TRUE
     )
@@ -997,25 +1002,23 @@ server <- function(input, output, session) {
   })
   
   # ------------------- playlists TAB--------------------
-  observe({
+  observeEvent(input$reset_playlist_date_range,{
     ss5<-filter(DJKey,ShowName==input$show_selection_5)
-    input$reset_playlist_date_range
-    updateDateRangeInput(session=session,"playlist_date_range",
-                         "Date Range:",
-                         start =  ss5 %>% pull(FirstShow),
-                         end = ss5 %>% pull(LastShow),
-                         min = ss5 %>% pull(FirstShow),
-                         max = ss5 %>% pull(LastShow)
+    updateDateRangeInput(session=session,
+                         inputId = "playlist_date_range",
+                         start =  pull(ss5,FirstShow),
+                         end = pull(ss5,LastShow),
+                         # min = ss5 %>% pull(FirstShow),
+                         # max = ss5 %>% pull(LastShow)
     )
-    output$debug_date <- renderText(
-      filter(DJKey,ShowName==input$show_selection_5) %>% pull(FirstShow) %>% print()
-    )
-    output$playlist_table<-DT::renderDataTable({
-      get_playlists(input$show_selection_5,input$playlist_date_range)
-      print(get_playlists(input$show_selection_5,input$playlist_date_range)) # DEBUG
-    })
-    
+
+#    output$playlist_table<-DT::renderDataTable({
+#      get_playlists(input$show_selection_5,input$playlist_date_range)
+#    })
   })
+   output$playlist_table<-DT::renderDataTable({
+     get_playlists(input$show_selection_5,input$playlist_date_range)
+   })
   
 }
 # -------------- CREATE SHINY APP  -----------------------------------------------------------
