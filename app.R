@@ -1,3 +1,4 @@
+# WFMU explorer verion 0.6
 # ----------------- LOAD LIBRARIES ----------------------
 library(shiny)
 library(shinycssloaders)
