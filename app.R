@@ -21,7 +21,7 @@ load('DJKey.RData')
 load("playlists.Rdata")
 load('djSimilarity.RData')
 load('djdtm.RData')
-source("wordcloud2a.r")
+source("wordcloud2a.R")
 
 # ----------------- DO SETUP ----------------------
 HOST_URL<- "wfmu.servebeer.com"
