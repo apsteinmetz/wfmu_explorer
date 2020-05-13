@@ -57,7 +57,7 @@ ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkl
                  # -- Add Tracking JS File 
                  #rest of UI doesn't initiate unless tab is clicked on if the code below runs
                  #tags$head(includeScript("google-analytics.js")),
-                 
+
                  # --------- Station TAB ----------------------------------
                  tabPanel("Station",
                           titlePanel("Top Artists and Songs Played on WFMU"),
@@ -282,7 +282,7 @@ ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkl
 
                             )
                  ),
-                 # --------- SONGS TAB ----------------------------------
+                # --------- SONGS TAB ----------------------------------
                  tabPanel("Songs",
                           titlePanel("Find Songs"),
                           sidebarLayout(
@@ -321,7 +321,7 @@ ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkl
                             )
                           )
                  ),
-                # --------------- Playlists --------------------
+                 # --------- Playlists tab --------------------
                  tabPanel("Playlists",
                           titlePanel("Get a Playlist"),
                           sidebarLayout(
@@ -361,7 +361,7 @@ ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkl
                             )
                           )
                  ),
-                 # --------- About/ ----------------------------------
+                 # --------- About ----------------------------------
                  tabPanel("About",
                           mainPanel(
                             includeMarkdown("about.md")
@@ -1012,14 +1012,17 @@ server <- function(input, output, session) {
                          # min = ss5 %>% pull(FirstShow),
                          # max = ss5 %>% pull(LastShow)
     )
-
-#    output$playlist_table<-DT::renderDataTable({
-#      get_playlists(input$show_selection_5,input$playlist_date_range)
-#    })
   })
-   output$playlist_table<-DT::renderDataTable({
-     get_playlists(input$show_selection_5,input$playlist_date_range)
-   })
+  output$playlist_table<-DT::renderDataTable({
+    datatable(get_playlists(input$show_selection_5,input$playlist_date_range),
+              options = list(initComplete = JS(
+                "function(settings, json) {",
+                "$(this.api().table().header()).css({'background-color': '#000', 'color': '#fff'});",
+#                "$(this.api().table().border()).css({'color': '#fff'});",
+                "}")
+              )
+    )
+  })
   
 }
 # -------------- CREATE SHINY APP  -----------------------------------------------------------
