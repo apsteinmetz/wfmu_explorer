@@ -53,7 +53,8 @@ playlists<-playlists %>%
   mutate(artist_song=paste(ArtistToken," - ",Title))
 
 #  DEFINE USER INTERFACE ===============================================================
-ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkly"),
+ui <- {
+  navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkly"),
                  # -- Add Tracking JS File 
                  #rest of UI doesn't initiate unless tab is clicked on if the code below runs
                  #tags$head(includeScript("google-analytics.js")),
@@ -349,8 +350,8 @@ ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkl
                                 h5("measures in the data set.")
                               )
                             ),
-                            
-                            
+
+
                             # Show playlists
                             mainPanel(
                               fluidRow(
@@ -367,9 +368,10 @@ ui <- navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkl
                             includeMarkdown("about.md")
                           )
                  )
-                 
-) # end UI
 
+ ) # end UI
+ 
+}
 # DEFINE SERVER ===============================================================
 server <- function(input, output, session) {
   # -------------- FUNCTIONS FOR STATION TAB -----------------------------
@@ -842,13 +844,15 @@ server <- function(input, output, session) {
       setProgress(message = "Processing...")
       ret_val<-play_count_by_DJ(input$artist_selection_1DJ,
                                 input$artist_years_range_1DJ,
-                                input$artist_all_other_1DJ)
+                                as.numeric(input$artist_all_other_1DJ))
     })
     return(ret_val)
   }
   
   output$artist_history_plot_1DJ <- renderPlot({
-    artist_history<-process_artists_1DJ()
+     artist_history<-process_artists_1DJ()
+     # artist_history <- play_count_by_DJ("Don Felder")
+    
     gg<-artist_history %>% 
       ggplot(aes(AirDate,Spins,fill=ShowName)) + 
       geom_col(orientation = "x") + 
@@ -972,7 +976,7 @@ server <- function(input, output, session) {
       setProgress(message = "Processing...")
       ret_val<-song_play_count_by_DJ(input$song_selection,
                                      input$song_years_range,
-                                     input$song_all_other)
+                                     as.numeric(input$song_all_other))
     })
     return(ret_val)
   }
