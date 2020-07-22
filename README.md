@@ -1,10 +1,10 @@
 ---
 title: "WFMU Playlist Explorer"
 version: 0.52
-date: "November 12, 2017"
+date: "Jan 20 2019"
 output: html_document
 ---
-![](https://wfmu.org/wp-content/uploads/2016/03/BadgeCourage.png) 
+![](BadgeCourage.png) 
 
 ## About WFMU Playlist Explorer
 [WFMU.ORG](http:www.wfmu.org), a free-form, listener-supported radio station, maintains a huge trove of past playlists from many DJ's radio shows.  More recently, web-only programming has been added to this.  This dataset offers lots of opportunities for analysis.  I scraped all the playlists I could from the web site and started asking questions.  The data set is here for your own explorations. It represents *over a million plays spanning decades!*
@@ -13,7 +13,7 @@ The web scraping and data-cleaning process was the most time consuming part of t
 
 There is a final step which is really a judgement call.  Many DJs have signature songs to open and/or close their shows.  Including these skews the play count for songs.  I have chosen to strip those out, or try to.  Songs where one DJ accounts for just about all the plays are stripped out as well.  This is the ultimate data set I use here.
 
-The end result is an reasonably accurate but incomplete record of all the playlists available at WFMU.ORG as of August 2018.  
+The end result is an reasonably accurate but incomplete record of all the playlists available at WFMU.ORG including the main and web-only streams.
 
 The code used for scraping,cleaning and analyzing is available at https://github.com/apsteinmetz/wfmu.
 
@@ -46,7 +46,7 @@ This site is powered by Shiny by RStudio (https://www.rstudio.com/) and written 
 
 *Changes in 0.37:Redid single artist tab.  Artist selection much streamlined.
 
-*Changes in 0.36: Multi-select on artist tab.  Many artist entries are misspelled.  Ideally, you'll combine variants.  You can now select, say, "DustySpringfield" and "DusySprinfield" if you start your search with "du."  Searching for "el" will let you select "ELO and "ElectricLight" (as in Orchestra).
+*Changes in 0.36: Multi-select on artist tab.  Many artist entries are misspelled.  Ideally, you'll combine variants.  You can now select, say, "Dusty Springfield" and "Dusy Sprinfield" if you start your search with "du."  Searching for "el" will let you select "ELO and "Electric Light" (as in Orchestra).
 
 Added a multi-artist tab.  Here you can compare more than one artist's plays over time.  At Ken's request the sizing of the plot is 710x355.  You can right-click "save as" in your browser to pull the image for further use.
 

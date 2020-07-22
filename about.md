@@ -1,10 +1,10 @@
 ---
 title: "WFMU Playlist Explorer"
 version: 0.52
-date: "November 12, 2017"
+date: "Jan 20 2019"
 output: html_document
 ---
-![](https://wfmu.org/wp-content/uploads/2016/03/BadgeCourage.png) 
+![](BadgeCourage.png) 
 
 <!-- Global Site Tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-107406537-1"></script>
@@ -23,7 +23,7 @@ The web scraping and data-cleaning process was the most time consuming part of t
 
 There is a final step which is really a judgement call.  Many DJs have signature songs to open and/or close their shows.  Including these skews the play count for songs.  I have chosen to strip those out, or try to.  Songs where one DJ accounts for just about all the plays are stripped out as well.  This is the ultimate data set I use here.
 
-The end result is an reasonably accurate but incomplete record of all the playlists available at WFMU.ORG as of August 2018.  
+The end result is an reasonably accurate but incomplete record of all the playlists available at WFMU.ORG as of the last web scraping.
 
 The code used for scraping,cleaning and analyzing is available at https://github.com/apsteinmetz/wfmu.
 
@@ -43,6 +43,8 @@ This site is powered by Shiny by RStudio (https://www.rstudio.com/) and written 
 -- Art Steinmetz (apsteinmetz@yahoo.com)
 
 ## Change log
+*Changes in 0.6 Corona virus update.  Rewrote almost entire app.  It broke after a number of R package updates.  I thought I was just updating the playlist data but tragedy ensued.  Lesson: sandbox even trival updates.  Switched to fancier worldcloud package.  Included a couple more DJs who have irregular playlist formats on the web site.  Many still missing.
+
 *Changes in 0.52: New Goth theme!
 
 *Changes in 0.51: Streamlined multi-artist selection tab.
@@ -55,7 +57,7 @@ This site is powered by Shiny by RStudio (https://www.rstudio.com/) and written 
 
 *Changes in 0.37:Redid single artist tab.  Artist selection much streamlined.
 
-*Changes in 0.36: Multi-select on artist tab.  Many artist entries are misspelled.  Ideally, you'll combine variants.  You can now select, say, "DustySpringfield" and "DusySprinfield" if you start your search with "du."  Searching for "el" will let you select "ELO and "ElectricLight" (as in Orchestra).
+*Changes in 0.36: Multi-select on artist tab.  Many artist entries are misspelled.  Ideally, you'll combine variants.  You can now select, say, "Dusty Springfield" and "Dusy Sprinfield" if you start your search with "du."  Searching for "el" will let you select "ELO and "Electric Light" (as in Orchestra).
 
 Added a multi-artist tab.  Here you can compare more than one artist's plays over time.  At Ken's request the sizing of the plot is 710x355.  You can right-click "save as" in your browser to pull the image for further use.
 
