@@ -1,12 +1,13 @@
 # WFMU explorer verion 0.6
 # ----------------- LOAD LIBRARIES ----------------------
+
+library(dplyr)
 library(shiny)
 library(shinycssloaders)
 library(shinythemes)
 library(memoise)
 library(wordcloud2)
 library(rmarkdown)
-library(tidyverse)
 library(lubridate)
 library(igraph)
 library(circlize)
@@ -703,8 +704,8 @@ server <- function(input, output, session) {
   output$DJ_date_slider <- renderUI({
     sliderInput("DJ_years_range",
                 "Year Range:",
-                min = filter(DJKey,ShowName==input$show_selection) %>% pull(FirstShow) %>% year(),
                 max = filter(DJKey,ShowName==input$show_selection) %>% pull(LastShow) %>% year(),
+                min = filter(DJKey,ShowName==input$show_selection) %>% pull(FirstShow) %>% year(),
                 sep = "",
                 step=1,
                 round = TRUE,
