@@ -25,7 +25,7 @@ load('djdtm.RData')
 source("wordcloud2a.R")
 
 # ----------------- DO SETUP ----------------------
-HOST_URL<- "wfmu.servebeer.com"
+HOST_URL<- "wfmu.artsteinmetz.com"
 #playlists <- playlists %>% mutate_if(is.character,str_squish)
 default_song<-"Help"
 default_artist<-'Abba'
