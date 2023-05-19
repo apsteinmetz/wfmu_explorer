@@ -35,10 +35,7 @@ min_year<-min(year(playlists$AirDate))
 
 #limit DJ list to DJs that are present in playlist file
 DJKey<-DJKey %>% 
-  mutate(DJ=as.character(DJ)) %>% 
-  semi_join(playlists,by='DJ') %>% 
-  arrange(ShowName) %>% 
-  unique()
+  filter(DJ %in% unique(playlists$DJ))
 
 #get unique artists
 all_artisttokens<-playlists %>%
@@ -702,6 +699,7 @@ server <- function(input, output, session) {
   })
   # ------------------- DJs tab --------------------
   output$DJ_date_slider <- renderUI({
+    print(filter(DJKey,ShowName==input$show_selection) %>% pull(FirstShow) %>% year() %>% is())
     sliderInput("DJ_years_range",
                 "Year Range:",
                 max = filter(DJKey,ShowName==input$show_selection) %>% pull(LastShow) %>% year(),
@@ -709,7 +707,8 @@ server <- function(input, output, session) {
                 sep = "",
                 step=1,
                 round = TRUE,
-                value = c(min,max)
+                value = c(filter(DJKey,ShowName==input$show_selection) %>% pull(LastShow) %>% year(),
+                          filter(DJKey,ShowName==input$show_selection) %>% pull(FirstShow) %>% year())
     )
     
   })
