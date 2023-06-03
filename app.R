@@ -2,6 +2,7 @@
 # ----------------- LOAD LIBRARIES ----------------------
 
 library(dplyr)
+library(tidyr)
 library(shiny)
 library(shinycssloaders)
 library(shinythemes)
