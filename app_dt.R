@@ -1,5 +1,26 @@
 # WFMU explorer verion 0.6
 # ----------------- LOAD LIBRARIES ----------------------
+# # package list for wfmu explorer
+# install.packages("dplyr")
+# install.packages("tidyr")
+# install.packages("dtplyr")
+# install.packages("data.table")
+# install.packages("shinycssloaders")
+# install.packages("shinythemes")
+# install.packages("memoise")
+# install.packages("wordcloud2")
+# install.packages("markdown")
+# install.packages("rmarkdown")
+# install.packages("lubridate")
+# install.packages("igraph")
+# install.packages("circlize")
+# install.packages("xts")
+# install.packages("stringr")
+# install.packages("ggplot2")
+# install.packages("ggthemes")
+# install.packages("tm")
+# install.packages("DT")
+
 
 library(dplyr)
 library(tidyr)
@@ -23,10 +44,15 @@ library(tm)
 library(DT)
 
 # all dt files are lazy_dt structures for dtplyr
-load('DJKey_dt.RData')
-load("playlists_dt.Rdata")
-load('djSimilarity_dt.RData')
-load('djdtm.RData')
+# load('DJKey_dt.RData')
+# load("playlists_dt.Rdata")
+# load('djSimilarity_dt.RData')
+# load('djdtm.RData')
+load(url("https://github.com/apsteinmetz/wfmu/raw/master/data/DJKey_dt.RData"))
+load(url('https://github.com/apsteinmetz/wfmu/raw/master/data/playlists_dt.Rdata'))
+load(url('https://github.com/apsteinmetz/wfmu/raw/master/data/djSimilarity_dt.RData'))
+load(url('https://github.com/apsteinmetz/wfmu/raw/master/data/djdtm.RData'))
+
 source("wordcloud2a.R")
 
 # ----------------- DO SETUP ----------------------
@@ -1027,7 +1053,7 @@ server <- function(input, output, session) {
               options = list(initComplete = JS(
                 "function(settings, json) {",
                 "$(this.api().table().header()).css({'background-color': '#000', 'color': '#fff'});",
-#                "$(this.api().table().border()).css({'color': '#fff'});",
+                "$(this.api().table().body()).css({'background-color': '#000', 'color': '#22b'});",
                 "}")
               )
     )
