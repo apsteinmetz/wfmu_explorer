@@ -87,7 +87,7 @@ playlists_dt<-playlists_dt %>%
 
 #  DEFINE USER INTERFACE ===============================================================
 ui <- {
-  navbarPage("WFMU Playlist Explorer BETA VERSION",theme = shinytheme("darkly"),
+  navbarPage("WFMU Playlist Explorer BETA VERSION 0.7",theme = shinytheme("darkly"),
                  # -- Add Tracking JS File 
                  #rest of UI doesn't initiate unless tab is clicked on if the code below runs
                  #tags$head(includeScript("google-analytics.js")),
