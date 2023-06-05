@@ -1,25 +1,26 @@
 # WFMU explorer verion 0.6
 # ----------------- LOAD LIBRARIES ----------------------
 # # package list for wfmu explorer
-# install.packages("dplyr")
-# install.packages("tidyr")
-# install.packages("dtplyr")
-# install.packages("data.table")
-# install.packages("shinycssloaders")
-# install.packages("shinythemes")
-# install.packages("memoise")
-# install.packages("wordcloud2")
-# install.packages("markdown")
-# install.packages("rmarkdown")
-# install.packages("lubridate")
-# install.packages("igraph")
-# install.packages("circlize")
-# install.packages("xts")
-# install.packages("stringr")
-# install.packages("ggplot2")
-# install.packages("ggthemes")
-# install.packages("tm")
-# install.packages("DT")
+# sudo su - -c "R -e \"install.packages('dplyr',repos=$REPO)\""
+# sudo su - -c "R -e \"install.packages('tidyr')\""
+# sudo su - -c "R -e \"install.packages('dtplyr')\""
+# sudo su - -c "R -e \"install.packages('data.table')\""
+# sudo su - -c "R -e \"install.packages('shinycssloaders')\""
+# sudo su - -c "R -e \"install.packages('shinythemes')\""
+# sudo su - -c "R -e \"install.packages('memoise')\""
+# sudo su - -c "R -e \"install.packages('wordcloud2')\""
+# sudo su - -c "R -e \"install.packages('markdown')\""
+# sudo su - -c "R -e \"install.packages('lubridate')\""
+# sudo su - -c "R -e \"install.packages('igraph')\""
+# sudo su - -c "R -e \"install.packages('circlize')\""
+# sudo su - -c "R -e \"install.packages('xts')\""
+# sudo su - -c "R -e \"install.packages('stringr')\""
+# sudo su - -c "R -e \"install.packages('ggplot2')\""
+# sudo su - -c "R -e \"install.packages('ggthemes')\""
+# sudo su - -c "R -e \"install.packages('tm')\""
+# sudo su - -c "R -e \"install.packages('DT')\""
+# 
+# sudo su - -c "R -e \"install.packages('rmarkdown')\""
 
 
 library(dplyr)
