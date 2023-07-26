@@ -105,9 +105,11 @@ ui <- {
   navbarPage("WFMU Playlist Explorer BETA VERSION 0.7",theme = shinytheme("darkly"),
                  # -- Add Tracking JS File 
                  #rest of UI doesn't initiate unless tab is clicked on if the code below runs
-                 #tags$head(includeScript("google-analytics.js")),
-
+                 #tags$head(includeScript("google-analytics.js"))
+             
                 # *-------- Station TAB ----------------------------------
+                 tags$head(includeHTML(("google-analytics.html"))),
+                 # --------- Station TAB ----------------------------------
                  tabPanel("Station",
                           titlePanel("Top Artists and Songs Played on WFMU"),
                           fluidPage(
