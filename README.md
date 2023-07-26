@@ -1,7 +1,7 @@
 ---
 title: "WFMU Playlist Explorer"
-version: 0.52
-date: "Jan 20 2019"
+version: 0.7
+date: "Jun 16 2023"
 output: html_document
 ---
 ![](BadgeCourage.png) 
@@ -33,6 +33,9 @@ This site is powered by Shiny by RStudio (https://www.rstudio.com/) and written 
 -- Art Steinmetz (apsteinmetz@yahoo.com)
 
 ## Change log
+*Changes in 0.7: 
+- load data files from separate repo so server doesn't need to be rebuilt to update playlists.
+- use data.table data structure for speed, but it didn't speed things up.
 
 *Changes in 0.52: New Goth theme!
 
