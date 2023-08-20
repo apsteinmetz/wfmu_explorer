@@ -9,4 +9,4 @@ sudo git pull --depth 1
 sudo systemctl restart shiny-server
 
 # if initial clone into current dir assumed to be cd /srv/shiny-server
-sudo git clone -b main --single-branch https://github.com/apsteinmetz/wfmu_explorer.git . --depth 1
+sudo git clone -b master --single-branch https://github.com/apsteinmetz/wfmu_explorer.git . --depth 1
