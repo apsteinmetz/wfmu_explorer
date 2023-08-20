@@ -1,9 +1,13 @@
 how to update
 make sure playlists.RData, djdtm.rdata, djkey.rdata and djsimiliary.rdata are up to date
 git push
+
 log into ubuntu instance on AWS  using PuTTY
-navigate to /srv/shiny-server on instance
-from server terminal:
+#  on instance
+cd /srv/shiny-server
 sudo git pull
 reboot server
 sudo systemctl restart shiny-server
+
+# if initial clone into current dir assumed to be cd /srv/shiny-server
+sudo git clone -b main --single-branch https://github.com/apsteinmetz/wfmu_explorer.git . --depth 1
