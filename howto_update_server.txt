@@ -5,7 +5,7 @@ git push
 log into ubuntu instance on AWS  using PuTTY
 #  on instance
 cd /srv/shiny-server
-sudo git pull --depth 1
+sudo git pull
 sudo systemctl restart shiny-server
 
 # if initial clone into current dir assumed to be cd /srv/shiny-server
