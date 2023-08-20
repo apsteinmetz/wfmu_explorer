@@ -4,6 +4,6 @@ git push
 log into ubuntu instance on AWS  using PuTTY
 navigate to /srv/shiny-server on instance
 from server terminal:
-git pull
+sudo git pull
 reboot server
 sudo systemctl restart shiny-server

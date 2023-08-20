@@ -1,6 +1,6 @@
 # testing arrow database
 
-# WFMU explorer verion 0.6
+# WFMU explorer verion 0.8
 # ----------------- LOAD LIBRARIES ----------------------
 # # package list for wfmu explorer
 # sudo su - -c "R -e \"install.packages('dplyr',repos=$REPO)\""
@@ -21,7 +21,7 @@
 # sudo su - -c "R -e \"install.packages('ggthemes')\""
 # sudo su - -c "R -e \"install.packages('tm')\""
 # sudo su - -c "R -e \"install.packages('DT')\""
-# # sudo su - -c "R -e \"install.packages('arrow)\""
+# sudo su - -c "R -e \"install.packages('arrow)\""
 # sudo su - -c "R -e \"install.packages('rmarkdown')\""
 
 
