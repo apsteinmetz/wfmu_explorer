@@ -54,7 +54,7 @@ options("dplyr.summarise.inform"=FALSE)
 #                              as_data_frame = FALSE)
 # djSimilarity <- arrow::read_parquet('https://github.com/apsteinmetz/wfmu/raw/master/data/dj_similarity_tidy.parquet',
 #                                    as_data_frame = FALSE)
-load('data/djdtm.RData')
+load('data/djdtm.rdata')
 
 playlists <- arrow::read_parquet('data/playlists.parquet',
                                  as_data_frame = FALSE)
