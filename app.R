@@ -1078,10 +1078,11 @@ server <- function(input, output, session) {
   })
   output$playlist_table<-DT::renderDataTable({
     datatable(get_playlists(input$show_selection_5,input$playlist_date_range),
+              style = "bootstrap",
               options = list(initComplete = JS(
                 "function(settings, json) {",
                 "$(this.api().table().header()).css({'background-color': '#000', 'color': '#fff'});",
-                "$(this.api().table().body()).css({'background-color': '#000', 'color': '#22b'});",
+                "$(this.api().table().body()).css({'background-color': '#000', 'color': '#44d'});",
                 "}")
               )
     )
