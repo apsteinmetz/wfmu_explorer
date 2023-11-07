@@ -51,7 +51,7 @@ This site is powered by Shiny by RStudio (<https://www.rstudio.com/>) and writte
 
 ## Change log
 
-\*Changes in 0.8 Switched from dtplyr to apache arrow for handling tables for speed. Updated to new versions of Ubuntu, R 
+\*Changes in 0.8 Switched from dtplyr to apache arrow for handling tables for speed. Updated to new versions of Ubuntu, R. Started using `renv` package to isolate app from package updates that might break it.
 
 \*Changes in 0.7 Switched from dplyr to dtplyr for handling tables. dtplyr uses the data.table package for much faster speed. Updated to new versions of Ubuntu, R and Shiny,
 
