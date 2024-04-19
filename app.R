@@ -5,13 +5,10 @@
 # # package list for wfmu explorer
 # sudo su - -c "R -e \"install.packages('dplyr',repos=$REPO)\""
 # sudo su - -c "R -e \"install.packages('tidyr')\""
-# sudo su - -c "R -e \"install.packages('dtplyr')\""
-# sudo su - -c "R -e \"install.packages('data.table')\""
 # sudo su - -c "R -e \"install.packages('shinycssloaders')\""
 # sudo su - -c "R -e \"install.packages('shinythemes')\""
 # sudo su - -c "R -e \"install.packages('memoise')\""
 # sudo su - -c "R -e \"install.packages('wordcloud2')\""
-# sudo su - -c "R -e \"install.packages('markdown')\""
 # sudo su - -c "R -e \"install.packages('lubridate')\""
 # sudo su - -c "R -e \"install.packages('igraph')\""
 # sudo su - -c "R -e \"install.packages('circlize')\""
@@ -21,8 +18,9 @@
 # sudo su - -c "R -e \"install.packages('ggthemes')\""
 # sudo su - -c "R -e \"install.packages('tm')\""
 # sudo su - -c "R -e \"install.packages('DT')\""
-# sudo su - -c "R -e \"install.packages('arrow)\""
-# sudo su - -c "R -e \"install.packages('rmarkdown')\""
+# sudo su - -c "R -e \"install.packages('duckdb')\""
+# sudo su - -c "R -e \"install.packages('duckplyr')\""
+# sudo su - -c "R -e \"install.packages('gt')\""
 
 
 library(dplyr)
@@ -32,8 +30,6 @@ library(shinycssloaders)
 library(shinythemes)
 library(memoise)
 library(wordcloud2)
-#library(markdown)
-#library(rmarkdown)
 library(lubridate)
 library(igraph)
 library(circlize)
@@ -42,10 +38,11 @@ library(ggplot2)
 library(zoo)
 library(ggthemes)
 library(tm)
-#library(DT)
-#library(arrow)
 library(duckdb)
 library(duckplyr)
+library(gt)
+library(DT)
+
 options("dplyr.summarise.inform"=FALSE)
 methods_overwrite()
 
@@ -57,8 +54,8 @@ methods_overwrite()
 #                              as_data_frame = FALSE)
 # djSimilarity <- arrow::read_parquet('https://github.com/apsteinmetz/wfmu/raw/master/data/dj_similarity_tidy.parquet',
 #                                    as_data_frame = FALSE)
-load('data/djdtm.rdata')
 
+load('data/djdtm.rdata') # document term object for similarity
 playlists <- df_from_parquet('data/playlists.parquet') |> as_duckplyr_df()
 DJKey <- df_from_parquet('data/DJKey.parquet')
 djSimilarity <- df_from_parquet('data/dj_similarity_tidy.parquet')
@@ -100,8 +97,8 @@ all_artisttokens<-playlists %>%
   pull(ArtistToken)
 
 #add artist with song to get unique songs
-playlists<-playlists %>% 
-  mutate(artist_song=paste(ArtistToken," - ",Title))
+#playlists<-playlists %>% 
+#  mutate(artist_song=paste(ArtistToken," - ",Title))
 
 #  DEFINE USER INTERFACE ===============================================================
 ui <- {
@@ -388,8 +385,8 @@ ui <- {
                                 h4('Choose Date Range:'), #just to make some space for calendar
                                 dateRangeInput("playlist_date_range",
                                                "Date Range:",
-                                               start = min_date,
-                                               end = max_date,
+                                               start = as.Date("2017-01-02"),
+                                               end = as.Date("2017-02-01"),
                                                min = min_date,
                                                max = max_date
                                 ),
@@ -429,7 +426,7 @@ ui <- {
 server <- function(input, output, session) {
   # -------------- FUNCTIONS FOR STATION TAB -----------------------------
   get_top_artists<-function(onAir="ALL",years_range = c(2010,2023)) {
-    years_range <- c(round(years_range[1]),round(years_range[2]))
+    years_range <- ytd(years_range)
     if (onAir=='ALL') {
       DJ_set <- DJKey %>% 
         select(DJ)   } else {
@@ -440,10 +437,9 @@ server <- function(input, output, session) {
 
     top_artists<-DJ_set %>% 
       left_join(playlists,by='DJ') %>%
-      # ungroup() %>% 
       filter(ArtistToken != "Unknown") %>% 
-      filter(AirDate>=as.Date(paste0(years_range[1],"-1-1"))) %>%  
-      filter(AirDate<=as.Date(paste0(years_range[2],"-12-31"))) %>%  
+      filter(AirDate>=years_range[1]) %>%  
+      filter(AirDate<=years_range[2]) %>%  
       summarize(.by=ArtistToken,play_count=n())%>%
       arrange(desc(play_count)) %>% 
       filter(ArtistToken != "") %>% 
@@ -451,29 +447,29 @@ server <- function(input, output, session) {
     return(top_artists)
   }
   
-  get_top_songs<-memoise(function(onAir='ALL',years_range = c(2010,2023)) {
-    years_range <- ytd(years_range)
-    if (onAir=='ALL') {
-      DJ_set <-DJKey %>% 
-        select(DJ)
-    } else {
-      DJ_set <-DJKey %>% 
-        filter(onSched==onAir) %>% #on Sched or off?
-        select(DJ)
-    }  
-    songs<-DJ_set %>%  
-      left_join(playlists,by='DJ') %>%
-      filter(AirDate>=years_range[1]) %>%  
-      filter(AirDate<=years_range[2]) %>%  
-      filter(Title != "") %>% 
-      summarize(.by=artist_song,play_count=n())%>%
-      arrange(desc(play_count))
-    
-    top_songs <- list(count = nrow(songs),
-                      songs = head(songs,25)) 
-        return(top_songs)
-  })
+  get_top_songs<-(function(onAir='ALL',years_range = c(2010,2023)) {
+  years_range <- ytd(years_range)
+  if (onAir=='ALL') {
+    DJ_set <-DJKey %>% 
+      select(DJ)
+  } else {
+    DJ_set <-DJKey %>% 
+      filter(onSched==onAir) %>% #on Sched or off?
+      select(DJ)
+  }  
+  songs<-DJ_set %>%  
+    left_join(playlists,by='DJ') %>%
+    filter(AirDate>=years_range[1]) %>%  
+    filter(AirDate<=years_range[2]) %>%  
+    filter(Title != "") %>% 
+    summarize(.by=c(ArtistToken,Title),play_count=n())%>%
+    arrange(desc(play_count))
   
+  top_songs <- list(count = nrow(songs),
+                    songs = head(songs,25)) 
+  return(top_songs)
+})
+
   # Note that we use eventReactive() here, which depends on
   # input$update (the action button), so that the output is only
   # updated when the user clicks the button
@@ -520,7 +516,7 @@ server <- function(input, output, session) {
       filter(DJ==dj) %>% 
       filter(AirDate>=years_range[1]) %>%
       filter(AirDate<=years_range[2]) %>%
-      summarize(.by=artist_song,play_count=n())%>%
+      summarize(.by=c(ArtistToken,Title),play_count=n())%>%
       arrange(desc(play_count)) %>% 
       head(25)
     return(as_tibble(top_songs))
@@ -568,12 +564,11 @@ server <- function(input, output, session) {
   songs_in_common<-memoise(function(dj1="TW",dj2="CF"){
     songs<-playlists %>% 
       filter(DJ %in% c(dj1,dj2)) %>%
-      summarise(.by=c(DJ,artist_song),n=n()) %>%
+      summarise(.by=c(DJ,ArtistToken,Title),n=n()) %>%
       spread(DJ,n) %>% 
-      mutate(sum_x=rowSums(.[2:ncol(.)],na.rm=TRUE)) %>% 
-      mutate(sd_x=.[2:ncol(.)] %>% replace_na(list(sd_x = 0)) %>% apply(1,sd)) %>% 
+      mutate(sum_x=rowSums(.[3:ncol(.)],na.rm=TRUE)) %>% 
+      mutate(sd_x=.[3:ncol(.)] %>% replace_na(list(sd_x = 0)) %>% apply(1,sd)) %>% 
       mutate(FaveIndex=trunc((sum_x-1.8*sd_x)*10)) %>% #apply some arbitrary scaling
-      #select(ArtistToken,sum,FaveIndex) %>% 
       select(-sum_x,-sd_x) %>% 
       arrange(desc(FaveIndex)) %>% 
       select(-FaveIndex) %>% 
@@ -665,10 +660,10 @@ server <- function(input, output, session) {
       filter(ShowName %in% show) %>% 
       select(DJ) %>% 
       left_join(playlists,by = "DJ") %>% 
+      select(-ArtistToken) |> 
       filter(AirDate>=date_range[1]) %>% 
       filter(AirDate<=date_range[2]) %>%
-      select(-artist_song,-DJ) %>% 
-      collect()
+      select(-DJ)
     # print(date_range) # DEBUG
     if (nrow(subset_playlists)==0) subset_playlists <- data.frame(Title="No shows in this date range.")
     return(subset_playlists)
@@ -1015,17 +1010,32 @@ server <- function(input, output, session) {
                          # max = ss5 %>% pull(LastShow)
     )
   })
+  # output$playlist_table<-DT::renderDataTable({
+  #   datatable(get_playlists(input$show_selection_5,input$playlist_date_range),
+  #             style = "bootstrap",
+  #             options = list(initComplete = JS(
+  #               "function(settings, json) {",
+  #               "$(this.api().table().header()).css({'background-color': '#000', 'color': '#fff'});",
+  #               "$(this.api().table().body()).css({'background-color': '#000', 'color': '#44d'});",
+  #               "}")
+  #             )
+  #   )
+  # })
   output$playlist_table<-DT::renderDataTable({
     datatable(get_playlists(input$show_selection_5,input$playlist_date_range),
-              style = "bootstrap",
-              options = list(initComplete = JS(
-                "function(settings, json) {",
-                "$(this.api().table().header()).css({'background-color': '#000', 'color': '#fff'});",
-                "$(this.api().table().body()).css({'background-color': '#000', 'color': '#44d'});",
-                "}")
+              style = "bootstrap4"
               )
-    )
   })
+# WHY WONT GT WORK
+#   output$playlist_table<-gt::render_gt({
+#     get_playlists(input$show_selection_5,input$playlist_date_range) |> gt() |>
+# #     get_playlists() |> gt() |>
+#       tab_header(title = "Playlist") |>
+#       opt_stylize(style=2,color = "green")
+#    })
+  # output$playlist_table<-renderDataTable({
+  #   get_playlists(input$show_selection_5,input$playlist_date_range)
+  # })
   
 }
 # -------------- CREATE SHINY APP  -----------------------------------------------------------
