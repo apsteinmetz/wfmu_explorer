@@ -44,16 +44,8 @@ library(gt)
 library(DT)
 
 options("dplyr.summarise.inform"=FALSE)
+options(duckdb.materialize_message = FALSE)
 methods_overwrite()
-
-# load(url('https://github.com/apsteinmetz/wfmu/raw/master/data/djdtm.RData'))
-# 
-# playlists <- arrow::read_parquet('https://github.com/apsteinmetz/wfmu/raw/master/data/playlists.parquet',
-#                                  as_data_frame = FALSE)
-# DJKey <- arrow::read_parquet('https://github.com/apsteinmetz/wfmu/raw/master/data/DJKey.parquet',
-#                              as_data_frame = FALSE)
-# djSimilarity <- arrow::read_parquet('https://github.com/apsteinmetz/wfmu/raw/master/data/dj_similarity_tidy.parquet',
-#                                    as_data_frame = FALSE)
 
 load('data/djdtm.rdata') # document term object for similarity
 playlists <- df_from_parquet('data/playlists.parquet') |> as_duckplyr_df()
@@ -82,10 +74,9 @@ ytd <- function(years_range) {
 }
 #limit DJ list to DJs that are present in playlist file
 DJKey<-DJKey %>% 
-  filter(DJ %in% unique(playlists[,"DJ"]))
+  filter(DJ %in% pull(distinct(select(playlists,DJ)),DJ))
 
-all_artisttokens<-unique(playlists[,"ArtistToken"])
-
+all_artisttokens <- distinct(select(playlists,ArtistToken)) |> pull(ArtistToken)
 #  DEFINE USER INTERFACE ===============================================================
 ui <- {
   navbarPage("WFMU Playlist Explorer BETA VERSION 0.8",theme = shinytheme("darkly"),
@@ -141,7 +132,7 @@ ui <- {
                                      sidebarLayout(
                                        sidebarPanel(
                                          selectInput("show_selection", "Show Name:",
-                                                     choices = DJKey_df$ShowName,
+                                                     choices = DJKey$ShowName,
                                                      selected = 'Teenage Wasteland'),
                                          hr(),
                                          uiOutput("DJ_date_slider")
@@ -171,7 +162,7 @@ ui <- {
                                        # Sidebar with a slider and selection inputs
                                        sidebarPanel(
                                          selectInput("show_selection_2", "Show Name:",
-                                                     choices = DJKey_df$ShowName,
+                                                     choices = DJKey$ShowName,
                                                      selected = 'Teenage Wasteland')
                                        ),
 
@@ -194,12 +185,12 @@ ui <- {
                                      fluidRow(
                                        column(4,
                                               selectInput("show_selection_1DJ", "Show Name:",
-                                                          choices = DJKey_df$ShowName,
+                                                          choices = DJKey$ShowName,
                                                           selected = 'Teenage Wasteland')
                                        ),
                                        column(4,
                                               selectInput("show_selection_4", "Show Name:",
-                                                          choices = DJKey_df$ShowName,
+                                                          choices = DJKey$ShowName,
                                                           selected = 'Bob Brainen')
                                        )
                                      ),
@@ -366,7 +357,7 @@ ui <- {
                               fluidRow(
                                 h4("Choose a Show:"),
                                 selectInput("show_selection_5", "Show Name:",
-                                            choices = DJKey_df$ShowName,
+                                            choices = DJKey$ShowName,
                                             selected = 'Teenage Wasteland'),
                                 h4('Choose Date Range:'), #just to make some space for calendar
                                 dateRangeInput("playlist_date_range",
@@ -680,7 +671,7 @@ server <- function(input, output, session) {
   })
   # ------------------- DJs tab --------------------
   output$DJ_date_slider <- renderUI({
-    dj <- filter(DJKey_df,ShowName==input$show_selection)
+    dj <- filter(DJKey,ShowName==input$show_selection)
     sliderInput("DJ_years_range",
                 "Year Range:",
                 max = year(dj$LastShow),
@@ -696,7 +687,7 @@ server <- function(input, output, session) {
   top_artists_DJ_reactive<-reactive({
     withProgress({
       setProgress(message = "Processing Artists...")
-      DJ<-filter(DJKey_df,ShowName==input$show_selection) %>% pull(DJ)
+      DJ<-filter(DJKey,ShowName==input$show_selection) %>% pull(DJ)
       if (is.null(input$DJ_years_range)) {
         years_range<-c(1982,year(Sys.Date()))
       } else{
@@ -711,7 +702,7 @@ server <- function(input, output, session) {
   top_songs_DJ_reactive<-reactive({
     withProgress({
       setProgress(message = "Processing Songs...")
-      DJ<-filter(DJKey_df,ShowName==input$show_selection) %>% pull(DJ)
+      DJ<-filter(DJKey,ShowName==input$show_selection) %>% pull(DJ)
       if (is.null(input$DJ_years_range)) {
         years_range<-c(1982,year(Sys.Date()))
       } else{
@@ -738,7 +729,7 @@ server <- function(input, output, session) {
   })
   
   output$DJ_table_similar <- renderTable({
-    dj1<-filter(DJKey_df,ShowName==input$show_selection_2) %>% 
+    dj1<-filter(DJKey,ShowName==input$show_selection_2) %>% 
       pull(DJ)
     ret_val <- get_similar_DJs(dj1)
     # make self-similarity 100%
@@ -746,7 +737,7 @@ server <- function(input, output, session) {
     ret_val
   })
   output$DJ_chord <- renderPlot({
-    dj1<-filter(DJKey_df,ShowName==input$show_selection_2) %>% 
+    dj1<-filter(DJKey,ShowName==input$show_selection_2) %>% 
       pull(DJ)
     # get similar djs but remove target dj or matrix stuff will break
     sim_DJs<-get_similar_DJs(dj1) %>% filter(DJ!=dj1) %>% pull(DJ)
@@ -774,8 +765,8 @@ server <- function(input, output, session) {
   },bg="black")
   
   output$DJ_plot_sim_index <- renderPlot({
-    dj1<-filter(DJKey_df,ShowName==input$show_selection_1DJ) %>% pull(DJ)
-    dj2<-filter(DJKey_df,ShowName==input$show_selection_4) %>% pull(DJ)
+    dj1<-filter(DJKey,ShowName==input$show_selection_1DJ) %>% pull(DJ)
+    dj2<-filter(DJKey,ShowName==input$show_selection_4) %>% pull(DJ)
     gg<-ggplot()+
       geom_histogram(data=as_tibble(djSimilarity),aes(Similarity),color="red",bins=30)+
       geom_vline(xintercept = get_sim_index(dj1,dj2),color='lightblue',linewidth=2)
@@ -786,13 +777,13 @@ server <- function(input, output, session) {
   },bg="black")
   
   output$DJ_table_common_songs <- renderTable({
-    dj1<-filter(DJKey_df,ShowName==input$show_selection_1DJ) %>% pull(DJ)
-    dj2<-filter(DJKey_df,ShowName==input$show_selection_4) %>% pull(DJ)
+    dj1<-filter(DJKey,ShowName==input$show_selection_1DJ) %>% pull(DJ)
+    dj2<-filter(DJKey,ShowName==input$show_selection_4) %>% pull(DJ)
     songs_in_common(dj1,dj2)
   })
   output$DJ_table_common_artists <- renderTable({
-    dj1<-filter(DJKey_df,ShowName==input$show_selection_1DJ) %>% pull(DJ)
-    dj2<-filter(DJKey_df,ShowName==input$show_selection_4) %>% pull(DJ)
+    dj1<-filter(DJKey,ShowName==input$show_selection_1DJ) %>% pull(DJ)
+    dj2<-filter(DJKey,ShowName==input$show_selection_4) %>% pull(DJ)
     artists_in_common(dj1,dj2)
   })
   
@@ -852,7 +843,7 @@ server <- function(input, output, session) {
     playlists %>% 
       filter(ArtistToken %in% input$artist_selection_1DJ) %>% 
       select(Artist) %>% 
-      unique()
+      distinct()
   })
   #---------------------- multi artist tab -----------------------
   reactive_multi_artists<-reactive({
@@ -879,7 +870,7 @@ server <- function(input, output, session) {
     playlists %>% 
       filter(ArtistToken %in% input$artist_selection_multi) %>% 
       select(Artist) %>% 
-      unique()
+      distinct()
   })
   
   output$debug_multi<-renderPrint({
@@ -943,8 +934,7 @@ server <- function(input, output, session) {
           filter(str_detect(Title,str_to_title(!!input$song_letters))) %>% 
           select(Title) %>%
           distinct() %>%
-          arrange(Title) # %>%
-          # pull(Title)
+          arrange(Title)
       })
     })
     return(ret_val)
@@ -988,7 +978,7 @@ server <- function(input, output, session) {
   
   # ------------------- playlists TAB--------------------
   observeEvent(input$reset_playlist_date_range,{
-    ss5<-filter(DJKey_df,ShowName==input$show_selection_5)
+    ss5<-filter(DJKey,ShowName==input$show_selection_5)
     updateDateRangeInput(session=session,
                          inputId = "playlist_date_range",
                          start =  pull(ss5,FirstShow),
