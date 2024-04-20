@@ -81,24 +81,10 @@ ytd <- function(years_range) {
   return(years_range)
 }
 #limit DJ list to DJs that are present in playlist file
-pl_dj <- playlists |> 
-  pull(DJ) |> 
-  unique()
-
 DJKey<-DJKey %>% 
-  filter(DJ %in% pl_dj) |> 
-  unique()
-DJKey_df <- DJKey |> as_tibble()
-#get unique artists
-all_artisttokens<-playlists %>%
-  select(ArtistToken) %>%
-  unique() %>%
-#  arrange(ArtistToken) %>% 
-  pull(ArtistToken)
+  filter(DJ %in% unique(playlists[,"DJ"]))
 
-#add artist with song to get unique songs
-#playlists<-playlists %>% 
-#  mutate(artist_song=paste(ArtistToken," - ",Title))
+all_artisttokens<-unique(playlists[,"ArtistToken"])
 
 #  DEFINE USER INTERFACE ===============================================================
 ui <- {
@@ -430,22 +416,23 @@ server <- function(input, output, session) {
     if (onAir=='ALL') {
       DJ_set <- DJKey %>% 
         select(DJ)   } else {
-      DJ_set <-DJKey %>% 
-        filter(onSched==onAir) %>% #on Sched or off?
-        select(DJ) 
-    }
-
+          DJ_set <-DJKey %>% 
+            filter(onSched==onAir) %>% #on Sched or off?
+            select(DJ) 
+        }
+    
     top_artists<-DJ_set %>% 
       left_join(playlists,by='DJ') %>%
       filter(ArtistToken != "Unknown") %>% 
+      filter(ArtistToken != "") %>% 
       filter(AirDate>=years_range[1]) %>%  
       filter(AirDate<=years_range[2]) %>%  
       summarize(.by=ArtistToken,play_count=n())%>%
       arrange(desc(play_count)) %>% 
-      filter(ArtistToken != "") %>% 
       head(100)
     return(top_artists)
   }
+  
   
   get_top_songs<-(function(onAir='ALL',years_range = c(2010,2023)) {
   years_range <- ytd(years_range)
@@ -956,8 +943,8 @@ server <- function(input, output, session) {
           filter(str_detect(Title,str_to_title(!!input$song_letters))) %>% 
           select(Title) %>%
           distinct() %>%
-          arrange(Title) %>%
-          pull(Title)
+          arrange(Title) # %>%
+          # pull(Title)
       })
     })
     return(ret_val)
