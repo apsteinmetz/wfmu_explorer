@@ -51,6 +51,7 @@ load('data/djdtm.rdata') # document term object for similarity
 playlists <- df_from_parquet('data/playlists.parquet') |> as_duckplyr_df()
 DJKey <- df_from_parquet('data/DJKey.parquet')
 djSimilarity <- df_from_parquet('data/dj_similarity_tidy.parquet')
+djDistinctive <- df_from_parquet('data/distinctive_artists.parquet')
 
 source("wordcloud2a.R")
 
@@ -135,8 +136,14 @@ ui <- {
                                                      choices = DJKey$ShowName,
                                                      selected = 'Teenage Wasteland'),
                                          hr(),
-                                         uiOutput("DJ_date_slider")
+                                         uiOutput("DJ_date_slider"),
                                          #, actionButton("DJ_update","Update")
+                                         hr(),
+                                         h4('Distinctive Artists'),
+                                         h4('Artists that are played often by this DJ but seldom by others'),
+                                         tableOutput("DJ_table_distinct_artists"),
+                                         hr(),
+                                         h5("If you're curious, this is a term frequency - inverse document frequency (TF-IDF) analysis.")
                                        ),
 
                                        # Show Word Cloud
@@ -720,6 +727,12 @@ server <- function(input, output, session) {
                 backgroundColor = "black",
                 color = 'random-light',
                 ellipticity = 1)
+  })
+  output$DJ_table_distinct_artists <- renderTable({
+    djDistinctive |> 
+      filter(DJ==filter(DJKey,ShowName==input$show_selection) %>% pull(DJ)) |> 
+      select(-DJ) |> 
+      head(25)
   })
   output$DJ_table_artists <- renderTable({
     top_artists_DJ_reactive()
