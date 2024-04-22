@@ -20,6 +20,7 @@
 # sudo su - -c "R -e \"install.packages('DT')\""
 # sudo su - -c "R -e \"install.packages('duckdb')\""
 # sudo su - -c "R -e \"install.packages('duckplyr')\""
+# sudo su - -c "R -e \"install.packages('jsonlite')\""
 # sudo su - -c "R -e \"install.packages('gt')\""
 
 
