@@ -26,6 +26,7 @@
 
 library(dplyr)
 library(tidyr)
+library(jsonlite)
 library(shiny)
 library(shinycssloaders)
 library(shinythemes)
