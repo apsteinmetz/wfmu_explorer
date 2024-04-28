@@ -52,10 +52,11 @@ ytd <- function(years_range) {
   return(years_range)
 }
 #limit DJ list to DJs that are present in playlist file
-DJKey<-DJKey %>% 
-  filter(DJ %in% pull(distinct(select(playlists,DJ)),DJ))
 
-all_artisttokens <- distinct(select(playlists,ArtistToken)) |> pull(ArtistToken)
+DJKey <- select(playlists,DJ) |> distinct() |> left_join(DJKey)
+
+all_artisttokens <- distinct(select(playlists,ArtistToken)) |> pull()
+
 #  DEFINE USER INTERFACE ===============================================================
 ui <- {
   navbarPage("WFMU Playlist Explorer BETA VERSION 0.9",theme = shinytheme("darkly"),
@@ -791,7 +792,7 @@ server <- function(input, output, session) {
           select(ArtistToken) %>%
           distinct() %>%
           arrange(ArtistToken) %>%
-          pull(ArtistToken,as_vector = TRUE)
+          pull(ArtistToken)
       })
     })
     return(ret_val)

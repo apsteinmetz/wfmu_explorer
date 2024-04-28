@@ -11,7 +11,7 @@ sudo ss -plut | grep -i shiny # find out if it's running
 
 # if initial clone into current dir assumed to be cd /srv/shiny-server
 # use ls -a to find hidden files if dir not empty
-sudo rm -rf .Rprofile .git .gitignore
+sudo rm -rf .Rprofile .git .gitignore .Rhistory .Rdata
 sudo git clone -b master --single-branch https://github.com/apsteinmetz/wfmu_explorer.git . --depth 1
 
 error logs
