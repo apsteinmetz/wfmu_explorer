@@ -15,7 +15,7 @@ sudo rm -rf .Rprofile .git .gitignore
 sudo git clone -b master --single-branch https://github.com/apsteinmetz/wfmu_explorer.git . --depth 1
 
 error logs
-/var/log/shiny-server/*.log
+ls /var/log/shiny-server/*.log
 /var/log/shinyserver.log
 
 # packages required

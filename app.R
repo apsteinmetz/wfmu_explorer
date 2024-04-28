@@ -26,10 +26,10 @@ options(duckdb.materialize_message = FALSE)
 methods_overwrite()
 
 load('data/djdtm.rdata') # document term object for similarity
-playlists <- df_from_parquet('data/playlists.parquet') |> as_duckplyr_df()
-DJKey <- df_from_parquet('data/DJKey.parquet')
-djSimilarity <- df_from_parquet('data/dj_similarity_tidy.parquet')
-djDistinctive <- df_from_parquet('data/distinctive_artists.parquet')
+playlists <- duckplyr_df_from_file('data/playlists.parquet',"read_parquet")
+DJKey <- duckplyr_df_from_file('data/DJKey.parquet',"read_parquet")
+djSimilarity <- duckplyr_df_from_file('data/dj_similarity_tidy.parquet',"read_parquet")
+djDistinctive <- duckplyr_df_from_file('data/distinctive_artists.parquet',"read_parquet")
 
 source("wordcloud2a.R")
 
