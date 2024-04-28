@@ -1,29 +1,5 @@
-# testing arrow database
-
 # WFMU explorer verion 0.8
 # ----------------- LOAD LIBRARIES ----------------------
-# # package list for wfmu explorer
-# sudo su - -c "R -e \"install.packages('dplyr',repos=$REPO)\""
-# sudo su - -c "R -e \"install.packages('tidyr')\""
-# sudo su - -c "R -e \"install.packages('shinycssloaders')\""
-# sudo su - -c "R -e \"install.packages('shinythemes')\""
-# sudo su - -c "R -e \"install.packages('memoise')\""
-# sudo su - -c "R -e \"install.packages('wordcloud2')\""
-# sudo su - -c "R -e \"install.packages('lubridate')\""
-# sudo su - -c "R -e \"install.packages('igraph')\""
-# sudo su - -c "R -e \"install.packages('circlize')\""
-# sudo su - -c "R -e \"install.packages('xts')\""
-# sudo su - -c "R -e \"install.packages('stringr')\""
-# sudo su - -c "R -e \"install.packages('ggplot2')\""
-# sudo su - -c "R -e \"install.packages('ggthemes')\""
-# sudo su - -c "R -e \"install.packages('tm')\""
-# sudo su - -c "R -e \"install.packages('DT')\""
-# sudo su - -c "R -e \"install.packages('duckdb')\""
-# sudo su - -c "R -e \"install.packages('duckplyr')\""
-# sudo su - -c "R -e \"install.packages('jsonlite')\""
-# sudo su - -c "R -e \"install.packages('gt')\""
-
-
 library(dplyr)
 library(tidyr)
 library(jsonlite)

@@ -7,6 +7,7 @@ log into ubuntu instance on AWS  using PuTTY
 cd /srv/shiny-server
 sudo git pull
 sudo systemctl restart shiny-server
+sudo ss -plut | grep -i shiny # find out if it's running
 
 # if initial clone into current dir assumed to be cd /srv/shiny-server
 # use ls -a to find hidden files if dir not empty
@@ -16,3 +17,28 @@ sudo git clone -b master --single-branch https://github.com/apsteinmetz/wfmu_exp
 error logs
 /var/log/shiny-server/*.log
 /var/log/shinyserver.log
+
+# packages required
+
+sudo su - -c "R -e \"install.packages('rmarkdown')\""
+sudo su - -c "R -e \"install.packages('renv')\""
+sudo su - -c "R -e \"install.packages('dplyr')\""
+sudo su - -c "R -e \"install.packages('tidyr')\""
+sudo su - -c "R -e \"install.packages('shiny')\""
+sudo su - -c "R -e \"install.packages('shinycssloaders')\""
+sudo su - -c "R -e \"install.packages('shinythemes')\""
+sudo su - -c "R -e \"install.packages('memoise')\""
+sudo su - -c "R -e \"install.packages('wordcloud2')\""
+sudo su - -c "R -e \"install.packages('lubridate')\""
+sudo su - -c "R -e \"install.packages('igraph')\""
+sudo su - -c "R -e \"install.packages('circlize')\""
+sudo su - -c "R -e \"install.packages('xts')\""
+sudo su - -c "R -e \"install.packages('stringr')\""
+sudo su - -c "R -e \"install.packages('ggplot2')\""
+sudo su - -c "R -e \"install.packages('ggthemes')\""
+sudo su - -c "R -e \"install.packages('tm')\""
+sudo su - -c "R -e \"install.packages('DT')\""
+sudo su - -c "R -e \"install.packages('duckdb')\""
+sudo su - -c "R -e \"install.packages('duckplyr')\""
+sudo su - -c "R -e \"install.packages('jsonlite')\""
+sudo su - -c "R -e \"install.packages('gt')\""
