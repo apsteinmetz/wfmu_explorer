@@ -494,11 +494,13 @@ server <- function(input, output, session) {
       rename(DJ=DJ2) %>% 
       select(DJ,Similarity) %>% 
       left_join(DJKey,by='DJ') %>%
-      mutate(Similarity=paste0(trunc(Similarity*100),"%")) %>% 
       #add target dj to top of table so we see the 2-letter code for the chord chart
       full_join(filter(DJKey,DJ==dj)) %>% 
-      select(ShowName,DJ,onSched,showCount,Similarity)
-      
+      mutate(Similarity2 = Similarity) |> 
+      mutate(Similarity=paste0(trunc(Similarity*100),"%")) %>% 
+      arrange(desc(Similarity2)) |> 
+      select(ShowName,DJ,onSched,showCount,Similarity) |> 
+      as_tibble()
     return(similar_DJs)
   })
   
@@ -726,7 +728,7 @@ server <- function(input, output, session) {
     ret_val <- get_similar_DJs(dj1)
     # make self-similarity 100%
     ret_val[11,5] <- "100%"
-    arrange(ret_val,desc(Similarity))
+    ret_val
   })
   output$DJ_chord <- renderPlot({
     dj1<-filter(DJKey,ShowName==input$show_selection_2) %>% 
