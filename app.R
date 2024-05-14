@@ -726,7 +726,7 @@ server <- function(input, output, session) {
     ret_val <- get_similar_DJs(dj1)
     # make self-similarity 100%
     ret_val[11,5] <- "100%"
-    ret_val
+    arrange(ret_val,desc(Similarity))
   })
   output$DJ_chord <- renderPlot({
     dj1<-filter(DJKey,ShowName==input$show_selection_2) %>% 
