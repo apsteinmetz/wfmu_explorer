@@ -1,4 +1,4 @@
-# WFMU explorer verion 0.8
+# WFMU explorer verion 0.9
 # ----------------- LOAD LIBRARIES ----------------------
 library(dplyr)
 library(tidyr)
@@ -113,7 +113,7 @@ ui <- {
                                        sidebarPanel(
                                          selectInput("show_selection", "Show Name:",
                                                      choices = DJKey$ShowName,
-                                                     selected = 'Teenage Wasteland'),
+                                                     selected = "Diane's Kamikaze Fun Machine"),
                                          hr(),
                                          uiOutput("DJ_date_slider"),
                                          #, actionButton("DJ_update","Update")
@@ -149,7 +149,7 @@ ui <- {
                                        sidebarPanel(
                                          selectInput("show_selection_2", "Show Name:",
                                                      choices = DJKey$ShowName,
-                                                     selected = 'Teenage Wasteland')
+                                                     selected = "Diane's Kamikaze Fun Machine")
                                        ),
 
                                        # Show Word Cloud
@@ -172,7 +172,7 @@ ui <- {
                                        column(4,
                                               selectInput("show_selection_1DJ", "Show Name:",
                                                           choices = DJKey$ShowName,
-                                                          selected = 'Teenage Wasteland')
+                                                          selected = "Diane's Kamikaze Fun Machine")
                                        ),
                                        column(4,
                                               selectInput("show_selection_4", "Show Name:",
@@ -344,7 +344,7 @@ ui <- {
                                 h4("Choose a Show:"),
                                 selectInput("show_selection_5", "Show Name:",
                                             choices = DJKey$ShowName,
-                                            selected = 'Teenage Wasteland'),
+                                            selected = "Diane's Kamikaze Fun Machine"),
                                 h4('Choose Date Range:'), #just to make some space for calendar
                                 dateRangeInput("playlist_date_range",
                                                "Date Range:",
@@ -620,7 +620,7 @@ server <- function(input, output, session) {
     return(ts)
   })
   # ------------------ stuff for playlists tab --------------
-  get_playlists<-memoise(function(show= "Teenage Wasteland",
+  get_playlists<-memoise(function(show= "Diane's Kamikaze Fun Machine",
                                   date_range=c(as.Date("2017-01-02"),as.Date("2017-02-01"))){
     subset_playlists<-DJKey %>% 
       filter(ShowName %in% show) %>% 
