@@ -21,7 +21,12 @@ ls /var/log/shiny-server/*.log
 display most recent r startup log
 sudo less "$(ls -t /var/log/shiny-server/*.log | head -n 1)"
 
-
+# things you may need to install
+sudo apt-get install gfortran
+sudo apt-get install gcc
+sudo apt-get install g++
+sudo apt-get install make
+sudo apt-get install libblas-dev liblapack-dev
 
 # packages required
 
