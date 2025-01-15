@@ -27,7 +27,7 @@ methods_overwrite()
 
 load('data/djdtm.rdata') # document term object for similarity
 playlists <- duckplyr_df_from_file('data/playlists.parquet',"read_parquet")
-DJKey <- duckplyr_df_from_file('data/DJKey.parquet',"read_parquet")
+djKey <- duckplyr_df_from_file('data/djKey.parquet',"read_parquet")
 djSimilarity <- duckplyr_df_from_file('data/dj_similarity_tidy.parquet',"read_parquet")
 djDistinctive <- duckplyr_df_from_file('data/distinctive_artists.parquet',"read_parquet")
 
@@ -53,7 +53,7 @@ ytd <- function(years_range) {
 }
 #limit DJ list to DJs that are present in playlist file
 
-DJKey <- select(playlists,DJ) |> distinct() |> left_join(DJKey)
+djKey <- select(playlists,DJ) |> distinct() |> left_join(djKey)
 
 all_artisttokens <- distinct(select(playlists,ArtistToken)) |> pull()
 
@@ -112,7 +112,7 @@ ui <- {
                                      sidebarLayout(
                                        sidebarPanel(
                                          selectInput("show_selection", "Show Name:",
-                                                     choices = DJKey$ShowName,
+                                                     choices = djKey$ShowName,
                                                      selected = "Diane's Kamikaze Fun Machine"),
                                          hr(),
                                          uiOutput("DJ_date_slider"),
@@ -148,7 +148,7 @@ ui <- {
                                        # Sidebar with a slider and selection inputs
                                        sidebarPanel(
                                          selectInput("show_selection_2", "Show Name:",
-                                                     choices = DJKey$ShowName,
+                                                     choices = djKey$ShowName,
                                                      selected = "Diane's Kamikaze Fun Machine")
                                        ),
 
@@ -171,12 +171,12 @@ ui <- {
                                      fluidRow(
                                        column(4,
                                               selectInput("show_selection_1DJ", "Show Name:",
-                                                          choices = DJKey$ShowName,
+                                                          choices = djKey$ShowName,
                                                           selected = "Diane's Kamikaze Fun Machine")
                                        ),
                                        column(4,
                                               selectInput("show_selection_4", "Show Name:",
-                                                          choices = DJKey$ShowName,
+                                                          choices = djKey$ShowName,
                                                           selected = 'Bob Brainen')
                                        )
                                      ),
@@ -343,13 +343,13 @@ ui <- {
                               fluidRow(
                                 h4("Choose a Show:"),
                                 selectInput("show_selection_5", "Show Name:",
-                                            choices = DJKey$ShowName,
+                                            choices = djKey$ShowName,
                                             selected = "Diane's Kamikaze Fun Machine"),
                                 h4('Choose Date Range:'), #just to make some space for calendar
                                 dateRangeInput("playlist_date_range",
                                                "Date Range:",
-                                               start = as.Date("2017-01-02"),
-                                               end = as.Date("2017-02-01"),
+                                               start = as.Date("2024-01-02"),
+                                               end = as.Date("2024-02-01"),
                                                min = min_date,
                                                max = max_date
                                 ),
@@ -390,20 +390,21 @@ server <- function(input, output, session) {
   # -------------- FUNCTIONS FOR STATION TAB -----------------------------
   get_top_artists<-function(onAir="ALL",years_range = c(2010,2023)) {
     years_range <- ytd(years_range)
+    y1 <- years_range[1]
+    y2 <- years_range[2]
     if (onAir=='ALL') {
-      DJ_set <- DJKey %>% 
-        select(DJ)   } else {
-          DJ_set <-DJKey %>% 
-            filter(onSched==onAir) %>% #on Sched or off?
-            select(DJ) 
-        }
+      DJ_set <- djKey
+    } else {
+      DJ_set <-djKey %>% 
+        filter(onSched==onAir)
+    }
     
     top_artists<-DJ_set %>% 
       left_join(playlists,by='DJ') %>%
       filter(ArtistToken != "Unknown") %>% 
       filter(ArtistToken != "") %>% 
-      filter(AirDate>=years_range[1]) %>%  
-      filter(AirDate<=years_range[2]) %>%  
+      filter(AirDate>=y1) %>%  
+      filter(AirDate<=y2) %>%  
       summarize(.by=ArtistToken,play_count=n())%>%
       arrange(desc(play_count)) %>% 
       head(100)
@@ -412,28 +413,30 @@ server <- function(input, output, session) {
   
   
   get_top_songs<-(function(onAir='ALL',years_range = c(2010,2023)) {
-  years_range <- ytd(years_range)
-  if (onAir=='ALL') {
-    DJ_set <-DJKey %>% 
-      select(DJ)
-  } else {
-    DJ_set <-DJKey %>% 
-      filter(onSched==onAir) %>% #on Sched or off?
-      select(DJ)
-  }  
-  songs<-DJ_set %>%  
-    left_join(playlists,by='DJ') %>%
-    filter(AirDate>=years_range[1]) %>%  
-    filter(AirDate<=years_range[2]) %>%  
-    filter(Title != "") %>% 
-    summarize(.by=c(ArtistToken,Title),play_count=n())%>%
-    arrange(desc(play_count))
+    years_range <- ytd(years_range)
+    y1 <- years_range[1]
+    y2 <- years_range[2]
+    if (onAir=='ALL') {
+      DJ_set <-djKey %>% 
+        select(DJ)
+    } else {
+      DJ_set <-djKey %>% 
+        filter(onSched==onAir) %>% #on Sched or off?
+        select(DJ)
+    }  
+    songs<-DJ_set %>%  
+      left_join(playlists,by='DJ') %>%
+      filter(AirDate>=y1) %>%  
+      filter(AirDate<=y2) %>%  
+      filter(Title != "") %>% 
+      summarize(.by=c(ArtistToken,Title),play_count=n())%>%
+      arrange(desc(play_count))
+    
+    top_songs <- list(count = nrow(songs),
+                      songs = head(songs,25)) 
+    return(top_songs)
+  })
   
-  top_songs <- list(count = nrow(songs),
-                    songs = head(songs,25)) 
-  return(top_songs)
-})
-
   # Note that we use eventReactive() here, which depends on
   # input$update (the action button), so that the output is only
   # updated when the user clicks the button
@@ -464,10 +467,12 @@ server <- function(input, output, session) {
   # -------------- FUNCTIONS FOR DJS TAB -----------------------------
   get_top_artists_DJ<-memoise(function(dj="TW",years_range = c(2017,2019)) {
     years_range <- ytd(years_range)
+    y1 <- years_range[1]
+    y2 <- years_range[2]
     top_artists<-playlists %>%
       filter(DJ==dj) %>% 
-      filter(AirDate>=years_range[1]) %>%  
-      filter(AirDate<=years_range[2]) %>%  
+      filter(AirDate>=y1) %>%  
+      filter(AirDate<=y2) %>%  
       summarize(.by = ArtistToken,play_count=n())%>%
       arrange(desc(play_count)) %>% 
       head(100)
@@ -476,34 +481,33 @@ server <- function(input, output, session) {
   
   get_top_songs_DJ<-memoise(function(dj="TW",years_range = c(2017,2019)) {
     years_range <- ytd(years_range)
+    y1 <- years_range[1]
+    y2 <- years_range[2]
     top_songs<-playlists %>% 
       filter(DJ==dj) %>% 
-      filter(AirDate>=years_range[1]) %>%
-      filter(AirDate<=years_range[2]) %>%
+      filter(AirDate>=y1) %>%
+      filter(AirDate<=y2) %>%
       summarize(.by=c(ArtistToken,Title),play_count=n())%>%
       arrange(desc(play_count)) %>% 
       head(25)
     return(as_tibble(top_songs))
   })
   
-  get_similar_DJs<-memoise(function(dj = "TW") {
+  get_similar_DJs<- memoise(function(dj = "TW") {
     similar_DJs<-djSimilarity %>% 
       filter(DJ1==dj) %>% 
       arrange(desc(Similarity)) %>% 
       head(10) %>% 
       rename(DJ=DJ2) %>% 
-      select(DJ,Similarity) %>% 
-      left_join(DJKey,by='DJ') %>%
-      #add target dj to top of table so we see the 2-letter code for the chord chart
-      full_join(filter(DJKey,DJ==dj)) %>% 
-      mutate(Similarity2 = Similarity) |> 
-      mutate(Similarity=paste0(trunc(Similarity*100),"%")) %>% 
-      arrange(desc(Similarity2)) |> 
+      left_join(djKey,by='DJ') %>%
+      # add target dj to top of table so we see the 2-letter code for the chord chart
+      full_join(filter(djKey,DJ==dj)) %>% 
+      arrange(desc(Similarity)) |> 
       select(ShowName,DJ,onSched,showCount,Similarity) |> 
-      as_tibble()
+      as_tibble() |> 
+      mutate(Similarity=paste0(as.character(trunc(Similarity*100)),"%"))
     return(similar_DJs)
   })
-  
   get_sim_index<-memoise(function(dj1 = "TW",dj2 = "CF") {
     DJ_sim<-djSimilarity %>% 
       filter(DJ1==dj1,DJ2==dj2) %>%
@@ -512,77 +516,112 @@ server <- function(input, output, session) {
   })
   
   artists_in_common<-memoise(function(dj1="TW",dj2="CF"){
-    artists<-playlists %>% 
-      filter(DJ %in% c(dj1,dj2)) %>% 
-      summarise(.by = c(DJ,ArtistToken), n=n()) %>%
-      spread(DJ,n) %>% 
-      mutate(sum_x=rowSums(.[2:ncol(.)],na.rm=TRUE)) %>% 
-      mutate(sd_x=.[2:ncol(.)] %>% replace_na(list(sd_x = 0)) %>% apply(1,sd)) %>% 
-      mutate(FaveIndex=trunc(sum_x-1.8*sd_x)) %>% 
-      #select(ArtistToken,sum,FaveIndex) %>% 
-      arrange(desc(FaveIndex)) %>%
-      head(10) %>% 
-      select(-sum_x,-sd_x) %>% 
-      select(-FaveIndex)
+    dj1_artists <- playlists %>%
+      filter(DJ == dj1) %>%
+      summarise(.by = c(DJ, ArtistToken), n = n()) |>
+      # standardize n
+      mutate(f1 = n / sum(n)) |>
+      arrange(desc(f1)) |> 
+      head(500) |> 
+      # rename n to dj1
+      rename("{dj1}" := n)
+    
+    dj2_artists <- playlists %>%
+      filter(DJ == dj2) %>%
+      summarise(.by = c(DJ, ArtistToken), n = n()) |>
+      mutate(f2 = n / sum(n)) |>
+      arrange(desc(f2)) |> 
+      head(500) |> 
+      # rename n to dj2
+      rename("{dj2}" := n)
+
+        artists <- inner_join(dj1_artists,dj2_artists,by=c("ArtistToken")) |> 
+      mutate(sum_f = f1 + f2) |> 
+      arrange(desc(sum_f)) |> 
+      head(10) |> 
+      select(ArtistToken, contains(dj1),contains(dj2))
+    
     return(artists)
   })
   
   songs_in_common<-memoise(function(dj1="TW",dj2="CF"){
-    songs<-playlists %>% 
-      filter(DJ %in% c(dj1,dj2)) %>%
-      summarise(.by=c(DJ,ArtistToken,Title),n=n()) %>%
-      spread(DJ,n) %>% 
-      mutate(sum_x=rowSums(.[3:ncol(.)],na.rm=TRUE)) %>% 
-      mutate(sd_x=.[3:ncol(.)] %>% replace_na(list(sd_x = 0)) %>% apply(1,sd)) %>% 
-      mutate(FaveIndex=trunc((sum_x-1.8*sd_x)*10)) %>% #apply some arbitrary scaling
-      select(-sum_x,-sd_x) %>% 
-      arrange(desc(FaveIndex)) %>% 
-      select(-FaveIndex) %>% 
-      head(10)
+    dj1_songs <- playlists %>%
+      filter(DJ == dj1) %>%
+      summarise(.by = c(DJ, ArtistToken,Title), n = n()) |>
+      # standardize n
+      mutate(f1 = n / sum(n)) |>
+      arrange(desc(f1)) |> 
+      head(500) |> 
+      # rename n to dj1
+      rename("{dj1}" := n)
+    
+    dj2_songs <- playlists %>%
+      filter(DJ == dj2) %>%
+      summarise(.by = c(DJ, Title), n = n()) |>
+      mutate(f2 = n / sum(n)) |>
+      arrange(desc(f2)) |> 
+      head(500) |> 
+      # rename n to dj2
+      rename("{dj2}" := n)
+    
+    
+    songs <- inner_join(dj1_songs,dj2_songs,by=c("Title")) |> 
+      mutate(sum_f = f1 + f2) |> 
+      arrange(desc(sum_f)) |> 
+      head(10) |> 
+      select(ArtistToken,Title, contains(dj1),contains(dj2))
     return(songs)
   })
   # ---------------FUNCTIONS FOR ARTIST TAB -----------------------------
   
   play_count_by_DJ<-memoise(function(artist_token = "Abba",years_range = c(2016,2019),threshold=3){
     years_range <- ytd(years_range)
+    y1 <- years_range[1]
+    y2 <- years_range[2]
     pc<- playlists %>% 
-      filter(AirDate>=years_range[1]) %>%  
-      filter(AirDate<=years_range[2]) %>%  
-      mutate(DJ=as.character(DJ)) %>% 
+      filter(AirDate>=y1) %>%  
+      filter(AirDate<=y2) %>%  
+      # mutate(DJ=as.character(DJ)) %>% 
       filter(ArtistToken %in% artist_token) %>% 
+      as_tibble() |> 
       mutate(AirDate=as.yearqtr(AirDate))  %>% 
       summarise(.by = c(AirDate,DJ),Spins=n()) |> 
       mutate(DJ = if_else(Spins < threshold, "AllOther", DJ)) |> 
       summarise(.by = c(AirDate,DJ),Spins=sum(Spins))
     
     pc1<-pc %>% 
-        left_join(DJKey,by='DJ') %>% 
-        select(AirDate,Spins,ShowName) %>%
-        mutate(ShowName=if_else(is.na(ShowName),"AllOther",ShowName)) |> 
-        arrange(AirDate)
-
+      left_join(djKey,by='DJ') %>% 
+      select(AirDate,Spins,ShowName) %>%
+      mutate(ShowName=if_else(is.na(ShowName),"AllOther",ShowName)) |> 
+      arrange(AirDate)
+    
     return(pc1)
   })
   
   play_count_by_artist<-memoise(function(artist_tokens= c("Abba","Beatles"),years_range=c(2012,2015)){
     years_range <- ytd(years_range)
+    y1 <- years_range[1]
+    y2 <- years_range[2]
     pc<- playlists %>% 
-      ungroup() %>% 
-      filter(AirDate>=years_range[1]) %>%  
-      filter(AirDate<=years_range[2]) %>%  
+      filter(AirDate>=y1) %>%  
+      filter(AirDate<=y2) %>%  
       filter(ArtistToken %in% artist_tokens) %>% 
+      as_tibble() |> 
       mutate(AirDate=year(AirDate))  %>% 
       summarise(.by =c(AirDate,ArtistToken),Spins=n()) %>% 
       arrange(AirDate)
     return(pc)
   })
   
+  
   top_songs_for_artist<-memoise(function(artist_token = "Abba",years_range=c(2012,2015)){
     years_range <- ytd(years_range)
+    y1 <- years_range[1]
+    y2 <- years_range[2]
     ts<-playlists %>% 
       filter(ArtistToken %in% artist_token) %>% 
-      filter(AirDate>=years_range[1]) %>%  
-      filter(AirDate<=years_range[2]) %>%  
+      filter(AirDate>=y1) %>%  
+      filter(AirDate<=y2) %>%  
       summarise(.by =Title,count=n()) %>% 
       arrange(desc(count))
     return(ts)
@@ -591,17 +630,20 @@ server <- function(input, output, session) {
   # ---------------FUNCTIONS FOR SONG TAB -----------------------------
   song_play_count_by_DJ<-memoise(function(songs = "Changes",years_range = c(2010,2019),threshold=3){
     years_range <- ytd(years_range)
+    y1 <- years_range[1]
+    y2 <- years_range[2]
     pc<- playlists %>% 
-      filter(AirDate>=years_range[1]) %>%  
-      filter(AirDate<=years_range[2]) %>%  
+      filter(AirDate>=y1) %>%  
+      filter(AirDate<=y2) %>%  
       filter(Title %in% songs) %>% 
+      as_tibble() |> 
       mutate(AirDate=as.yearqtr(AirDate))  %>% 
       summarise(.by = c(AirDate,DJ),Spins=n()) %>% 
       mutate(DJ = if_else(Spins < threshold, "AllOther", DJ)) |> 
       summarise(.by = c(AirDate,DJ),Spins=sum(Spins))
     
     pc1<-pc %>% 
-      left_join(DJKey,by='DJ') %>% 
+      left_join(djKey,by='DJ') %>% 
       select(AirDate,Spins,ShowName) %>%
       mutate(ShowName=if_else(is.na(ShowName),"AllOther",ShowName)) |> 
       arrange(AirDate)
@@ -611,29 +653,35 @@ server <- function(input, output, session) {
   
   top_artists_for_song<-memoise(function(song="Help",years_range=c(2010,2019)){
     years_range <- ytd(years_range)
+    y1 <- years_range[1]
+    y2 <- years_range[2]
     ts<-playlists %>% 
-      filter(AirDate>=years_range[1]) %>%  
-      filter(AirDate<=years_range[2]) %>%  
+      filter(AirDate>=y1) %>%  
+      filter(AirDate<=y2) %>%  
       filter(Title %in% song) %>%
       summarise(.by = c(ArtistToken),count=n()) %>% 
       arrange(desc(count))
     return(ts)
   })
+  
   # ------------------ stuff for playlists tab --------------
   get_playlists<-memoise(function(show= "Diane's Kamikaze Fun Machine",
-                                  date_range=c(as.Date("2017-01-02"),as.Date("2017-02-01"))){
-    subset_playlists<-DJKey %>% 
+                            date_range=c(as.Date("2024-01-02"),as.Date("2024-02-01"))){
+    d1 = date_range[1]
+    d2 = date_range[2]
+    subset_playlists<-djKey %>% 
       filter(ShowName %in% show) %>% 
       select(DJ) %>% 
       left_join(playlists,by = "DJ") %>% 
       select(-ArtistToken) |> 
-      filter(AirDate>=date_range[1]) %>% 
-      filter(AirDate<=date_range[2]) %>%
+      filter(AirDate>=d1) %>% 
+      filter(AirDate<=d2) %>%
       select(-DJ)
     # print(date_range) # DEBUG
     if (nrow(subset_playlists)==0) subset_playlists <- data.frame(Title="No shows in this date range.")
     return(subset_playlists)
   })
+  
   # ---------------OUTPUT SECTION --------------------
   # ------------------- station tab ----------------
   output$cloud <- renderWordcloud2({
@@ -659,7 +707,7 @@ server <- function(input, output, session) {
   })
   # ------------------- DJs tab --------------------
   output$DJ_date_slider <- renderUI({
-    dj <- filter(DJKey,ShowName==input$show_selection)
+    dj <- filter(djKey,ShowName==input$show_selection)
     sliderInput("DJ_years_range",
                 "Year Range:",
                 max = year(dj$LastShow),
@@ -675,7 +723,7 @@ server <- function(input, output, session) {
   top_artists_DJ_reactive<-reactive({
     withProgress({
       setProgress(message = "Processing Artists...")
-      DJ<-filter(DJKey,ShowName==input$show_selection) %>% pull(DJ)
+      DJ<-filter(djKey,ShowName==input$show_selection) %>% pull(DJ)
       if (is.null(input$DJ_years_range)) {
         years_range<-c(1982,year(Sys.Date()))
       } else{
@@ -690,7 +738,7 @@ server <- function(input, output, session) {
   top_songs_DJ_reactive<-reactive({
     withProgress({
       setProgress(message = "Processing Songs...")
-      DJ<-filter(DJKey,ShowName==input$show_selection) %>% pull(DJ)
+      DJ<-filter(djKey,ShowName==input$show_selection) %>% pull(DJ)
       if (is.null(input$DJ_years_range)) {
         years_range<-c(1982,year(Sys.Date()))
       } else{
@@ -711,7 +759,7 @@ server <- function(input, output, session) {
   })
   output$DJ_table_distinct_artists <- renderTable({
     djDistinctive |> 
-      filter(DJ==filter(DJKey,ShowName==input$show_selection) %>% pull(DJ)) |> 
+      filter(DJ==filter(djKey,ShowName==input$show_selection) %>% pull(DJ)) |> 
       select(-DJ) |> 
       head(25)
   })
@@ -723,7 +771,7 @@ server <- function(input, output, session) {
   })
   
   output$DJ_table_similar <- renderTable({
-    dj1<-filter(DJKey,ShowName==input$show_selection_2) %>% 
+    dj1<-filter(djKey,ShowName==input$show_selection_2) %>% 
       pull(DJ)
     ret_val <- get_similar_DJs(dj1)
     # make self-similarity 100%
@@ -731,7 +779,7 @@ server <- function(input, output, session) {
     ret_val
   })
   output$DJ_chord <- renderPlot({
-    dj1<-filter(DJKey,ShowName==input$show_selection_2) %>% 
+    dj1<-filter(djKey,ShowName==input$show_selection_2) %>% 
       pull(DJ)
     # get similar djs but remove target dj or matrix stuff will break
     sim_DJs<-get_similar_DJs(dj1) %>% filter(DJ!=dj1) %>% pull(DJ)
@@ -740,7 +788,7 @@ server <- function(input, output, session) {
     # set zeros in diagonal
     diag(adj_mat1) = 0
     #change from dJ to show name
-    #dimnames(adj_mat1)<-rep(list(Docs=filter(DJKey,DJ  %in% row.names(adj_mat1)) %>% pull(ShowName)),2)
+    #dimnames(adj_mat1)<-rep(list(Docs=filter(djKey,DJ  %in% row.names(adj_mat1)) %>% pull(ShowName)),2)
     # create graph from adjacency matrix
     graph_artists1 = graph.adjacency(adj_mat1, mode="undirected", weighted=TRUE, diag=FALSE)
     # get edgelist 1
@@ -759,8 +807,8 @@ server <- function(input, output, session) {
   },bg="black")
   
   output$DJ_plot_sim_index <- renderPlot({
-    dj1<-filter(DJKey,ShowName==input$show_selection_1DJ) %>% pull(DJ)
-    dj2<-filter(DJKey,ShowName==input$show_selection_4) %>% pull(DJ)
+    dj1<-filter(djKey,ShowName==input$show_selection_1DJ) %>% pull(DJ)
+    dj2<-filter(djKey,ShowName==input$show_selection_4) %>% pull(DJ)
     gg<-ggplot()+
       geom_histogram(data=as_tibble(djSimilarity),aes(Similarity),color="red",bins=30)+
       geom_vline(xintercept = get_sim_index(dj1,dj2),color='lightblue',linewidth=2)
@@ -771,13 +819,13 @@ server <- function(input, output, session) {
   },bg="black")
   
   output$DJ_table_common_songs <- renderTable({
-    dj1<-filter(DJKey,ShowName==input$show_selection_1DJ) %>% pull(DJ)
-    dj2<-filter(DJKey,ShowName==input$show_selection_4) %>% pull(DJ)
+    dj1<-filter(djKey,ShowName==input$show_selection_1DJ) %>% pull(DJ)
+    dj2<-filter(djKey,ShowName==input$show_selection_4) %>% pull(DJ)
     songs_in_common(dj1,dj2)
   })
   output$DJ_table_common_artists <- renderTable({
-    dj1<-filter(DJKey,ShowName==input$show_selection_1DJ) %>% pull(DJ)
-    dj2<-filter(DJKey,ShowName==input$show_selection_4) %>% pull(DJ)
+    dj1<-filter(djKey,ShowName==input$show_selection_1DJ) %>% pull(DJ)
+    dj2<-filter(djKey,ShowName==input$show_selection_4) %>% pull(DJ)
     artists_in_common(dj1,dj2)
   })
   
@@ -972,7 +1020,7 @@ server <- function(input, output, session) {
   
   # ------------------- playlists TAB--------------------
   observeEvent(input$reset_playlist_date_range,{
-    ss5<-filter(DJKey,ShowName==input$show_selection_5)
+    ss5<-filter(djKey,ShowName==input$show_selection_5)
     updateDateRangeInput(session=session,
                          inputId = "playlist_date_range",
                          start =  pull(ss5,FirstShow),
