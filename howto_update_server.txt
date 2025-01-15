@@ -18,6 +18,11 @@ error logs
 ls /var/log/shiny-server/*.log
 /var/log/shinyserver.log
 
+display most recent r startup log
+sudo less "$(ls -t /var/log/shiny-server/*.log | head -n 1)"
+
+
+
 # packages required
 
 sudo su - -c "R -e \"install.packages('dplyr')\""
