@@ -20,8 +20,6 @@ ls /var/log/shiny-server/*.log
 
 # packages required
 
-sudo su - -c "R -e \"install.packages('rmarkdown')\""
-sudo su - -c "R -e \"install.packages('renv')\""
 sudo su - -c "R -e \"install.packages('dplyr')\""
 sudo su - -c "R -e \"install.packages('tidyr')\""
 sudo su - -c "R -e \"install.packages('shiny')\""
@@ -42,3 +40,7 @@ sudo su - -c "R -e \"install.packages('duckdb')\""
 sudo su - -c "R -e \"install.packages('duckplyr')\""
 sudo su - -c "R -e \"install.packages('jsonlite')\""
 sudo su - -c "R -e \"install.packages('gt')\""
+
+# no longer used
+sudo su - -c "R -e \"install.packages('rmarkdown')\""
+sudo su - -c "R -e \"install.packages('renv')\""
