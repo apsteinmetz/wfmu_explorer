@@ -23,7 +23,7 @@ library(duckplyr)
 options("dplyr.summarise.inform" = TRUE)
 options(duckdb.materialize_message = TRUE)
 Sys.setenv(DUCKPLYR_FALLBACK_INFO = TRUE)
-Sys.setenv(DUCKPLYR_FORCE = FALSE)
+Sys.setenv(DUCKPLYR_FORCE = TRUE)
 Sys.setenv(DUCKPLYR_FALLBACK_COLLECT = 1)
 # stop reporting all duckplyr fallback events
 options("dplyr.summarise.inform" = FALSE)
@@ -780,20 +780,21 @@ get_playlists2<-(function(show= "Diane's Kamikaze Fun Machine",
   },bg="black")
   
   # ------------------ SONG TAB -----------------
-  reactive_songs_letters<-reactive({
-    input$song_update_1
-    isolate({      
-      withProgress({
-        setProgress(message = "Processing...")
+#  reactive_songs_letters<-reactive({
+#    input$song_update_1
+  song_letters <- str_to_title("Help")
+#    isolate({      
+#      withProgress({
+#        setProgress(message = "Processing...")
         ret_val<-playlists %>%
-          filter(str_detect(Title,str_to_title(!!input$song_letters))) %>% 
+          filter(grepl(song_letters,Title)) %>% 
           select(Title) %>%
           distinct() %>%
           arrange(Title)
-      })
-    })
-    return(ret_val)
-  })
+#      })
+#    })
+#    return(ret_val)
+#  })
   
   
   process_songs<-function(){

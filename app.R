@@ -20,8 +20,9 @@ library(duckdb)
 library(duckplyr)
 library(gt)
 library(DT)
+library(bslib)
 
-options("dplyr.summarise.inform"=FALSE)
+options("dplyr.summarise.inform"= FALSE)
 options(duckdb.materialize_message = FALSE)
 methods_overwrite()
 
@@ -53,9 +54,9 @@ ytd <- function(years_range) {
 }
 #limit DJ list to DJs that are present in playlist file
 
-djKey <- select(playlists,DJ) |> distinct() |> left_join(djKey)
+djKey <- select(playlists,DJ) %>% distinct() %>% left_join(djKey)
 
-all_artisttokens <- distinct(select(playlists,ArtistToken)) |> pull()
+all_artisttokens <- distinct(select(playlists,ArtistToken)) %>% pull()
 
 #  DEFINE USER INTERFACE ===============================================================
 ui <- {
@@ -502,9 +503,9 @@ server <- function(input, output, session) {
       left_join(djKey,by='DJ') %>%
       # add target dj to top of table so we see the 2-letter code for the chord chart
       full_join(filter(djKey,DJ==dj)) %>% 
-      arrange(desc(Similarity)) |> 
-      select(ShowName,DJ,onSched,showCount,Similarity) |> 
-      as_tibble() |> 
+      arrange(desc(Similarity)) %>% 
+      select(ShowName,DJ,onSched,showCount,Similarity) %>% 
+      as_tibble() %>% 
       mutate(Similarity=paste0(as.character(trunc(Similarity*100)),"%"))
     return(similar_DJs)
   })
@@ -518,27 +519,27 @@ server <- function(input, output, session) {
   artists_in_common<-memoise(function(dj1="TW",dj2="CF"){
     dj1_artists <- playlists %>%
       filter(DJ == dj1) %>%
-      summarise(.by = c(DJ, ArtistToken), n = n()) |>
+      summarise(.by = c(DJ, ArtistToken), n = n()) %>%
       # standardize n
-      mutate(f1 = n / sum(n)) |>
-      arrange(desc(f1)) |> 
-      head(500) |> 
+      mutate(f1 = n / sum(n)) %>%
+      arrange(desc(f1)) %>% 
+      head(500) %>% 
       # rename n to dj1
       rename("{dj1}" := n)
     
     dj2_artists <- playlists %>%
       filter(DJ == dj2) %>%
-      summarise(.by = c(DJ, ArtistToken), n = n()) |>
-      mutate(f2 = n / sum(n)) |>
-      arrange(desc(f2)) |> 
-      head(500) |> 
+      summarise(.by = c(DJ, ArtistToken), n = n()) %>%
+      mutate(f2 = n / sum(n)) %>%
+      arrange(desc(f2)) %>% 
+      head(500) %>% 
       # rename n to dj2
       rename("{dj2}" := n)
 
-        artists <- inner_join(dj1_artists,dj2_artists,by=c("ArtistToken")) |> 
-      mutate(sum_f = f1 + f2) |> 
-      arrange(desc(sum_f)) |> 
-      head(10) |> 
+        artists <- inner_join(dj1_artists,dj2_artists,by=c("ArtistToken")) %>% 
+      mutate(sum_f = f1 + f2) %>% 
+      arrange(desc(sum_f)) %>% 
+      head(10) %>% 
       select(ArtistToken, contains(dj1),contains(dj2))
     
     return(artists)
@@ -547,28 +548,28 @@ server <- function(input, output, session) {
   songs_in_common<-memoise(function(dj1="TW",dj2="CF"){
     dj1_songs <- playlists %>%
       filter(DJ == dj1) %>%
-      summarise(.by = c(DJ, ArtistToken,Title), n = n()) |>
+      summarise(.by = c(DJ, ArtistToken,Title), n = n()) %>%
       # standardize n
-      mutate(f1 = n / sum(n)) |>
-      arrange(desc(f1)) |> 
-      head(500) |> 
+      mutate(f1 = n / sum(n)) %>%
+      arrange(desc(f1)) %>% 
+      head(500) %>% 
       # rename n to dj1
       rename("{dj1}" := n)
     
     dj2_songs <- playlists %>%
       filter(DJ == dj2) %>%
-      summarise(.by = c(DJ, Title), n = n()) |>
-      mutate(f2 = n / sum(n)) |>
-      arrange(desc(f2)) |> 
-      head(500) |> 
+      summarise(.by = c(DJ, Title), n = n()) %>%
+      mutate(f2 = n / sum(n)) %>%
+      arrange(desc(f2)) %>% 
+      head(500) %>% 
       # rename n to dj2
       rename("{dj2}" := n)
     
     
-    songs <- inner_join(dj1_songs,dj2_songs,by=c("Title")) |> 
-      mutate(sum_f = f1 + f2) |> 
-      arrange(desc(sum_f)) |> 
-      head(10) |> 
+    songs <- inner_join(dj1_songs,dj2_songs,by=c("Title")) %>% 
+      mutate(sum_f = f1 + f2) %>% 
+      arrange(desc(sum_f)) %>% 
+      head(10) %>% 
       select(ArtistToken,Title, contains(dj1),contains(dj2))
     return(songs)
   })
@@ -583,16 +584,16 @@ server <- function(input, output, session) {
       filter(AirDate<=y2) %>%  
       # mutate(DJ=as.character(DJ)) %>% 
       filter(ArtistToken %in% artist_token) %>% 
-      as_tibble() |> 
+      as_tibble() %>% 
       mutate(AirDate=as.yearqtr(AirDate))  %>% 
-      summarise(.by = c(AirDate,DJ),Spins=n()) |> 
-      mutate(DJ = if_else(Spins < threshold, "AllOther", DJ)) |> 
+      summarise(.by = c(AirDate,DJ),Spins=n()) %>% 
+      mutate(DJ = if_else(Spins < threshold, "AllOther", DJ)) %>% 
       summarise(.by = c(AirDate,DJ),Spins=sum(Spins))
     
     pc1<-pc %>% 
       left_join(djKey,by='DJ') %>% 
       select(AirDate,Spins,ShowName) %>%
-      mutate(ShowName=if_else(is.na(ShowName),"AllOther",ShowName)) |> 
+      mutate(ShowName=if_else(is.na(ShowName),"AllOther",ShowName)) %>% 
       arrange(AirDate)
     
     return(pc1)
@@ -606,7 +607,7 @@ server <- function(input, output, session) {
       filter(AirDate>=y1) %>%  
       filter(AirDate<=y2) %>%  
       filter(ArtistToken %in% artist_tokens) %>% 
-      as_tibble() |> 
+      as_tibble() %>% 
       mutate(AirDate=year(AirDate))  %>% 
       summarise(.by =c(AirDate,ArtistToken),Spins=n()) %>% 
       arrange(AirDate)
@@ -636,16 +637,16 @@ server <- function(input, output, session) {
       filter(AirDate>=y1) %>%  
       filter(AirDate<=y2) %>%  
       filter(Title %in% songs) %>% 
-      as_tibble() |> 
+      as_tibble() %>% 
       mutate(AirDate=as.yearqtr(AirDate))  %>% 
       summarise(.by = c(AirDate,DJ),Spins=n()) %>% 
-      mutate(DJ = if_else(Spins < threshold, "AllOther", DJ)) |> 
+      mutate(DJ = if_else(Spins < threshold, "AllOther", DJ)) %>% 
       summarise(.by = c(AirDate,DJ),Spins=sum(Spins))
     
     pc1<-pc %>% 
       left_join(djKey,by='DJ') %>% 
       select(AirDate,Spins,ShowName) %>%
-      mutate(ShowName=if_else(is.na(ShowName),"AllOther",ShowName)) |> 
+      mutate(ShowName=if_else(is.na(ShowName),"AllOther",ShowName)) %>% 
       arrange(AirDate)
     
     return(pc1)
@@ -673,7 +674,7 @@ server <- function(input, output, session) {
       filter(ShowName %in% show) %>% 
       select(DJ) %>% 
       left_join(playlists,by = "DJ") %>% 
-      select(-ArtistToken) |> 
+      select(-ArtistToken) %>% 
       filter(AirDate>=d1) %>% 
       filter(AirDate<=d2) %>%
       select(-DJ)
@@ -758,9 +759,9 @@ server <- function(input, output, session) {
                 ellipticity = 1)
   })
   output$DJ_table_distinct_artists <- renderTable({
-    djDistinctive |> 
-      filter(DJ==filter(djKey,ShowName==input$show_selection) %>% pull(DJ)) |> 
-      select(-DJ) |> 
+    djDistinctive %>% 
+      filter(DJ==filter(djKey,ShowName==input$show_selection) %>% pull(DJ)) %>% 
+      select(-DJ) %>% 
       head(25)
   })
   output$DJ_table_artists <- renderTable({
@@ -790,9 +791,9 @@ server <- function(input, output, session) {
     #change from dJ to show name
     #dimnames(adj_mat1)<-rep(list(Docs=filter(djKey,DJ  %in% row.names(adj_mat1)) %>% pull(ShowName)),2)
     # create graph from adjacency matrix
-    graph_artists1 = graph.adjacency(adj_mat1, mode="undirected", weighted=TRUE, diag=FALSE)
+    graph_artists1 = graph_from_adjacency_matrix(adj_mat1, mode="undirected", weighted=TRUE, diag=FALSE)
     # get edgelist 1
-    edges1 = get.edgelist(graph_artists1)
+    edges1 = as_edgelist(graph_artists1)
     
     # arc widths based on graph_artists1
     w1 = E(graph_artists1)$weight
@@ -829,16 +830,16 @@ server <- function(input, output, session) {
     artists_in_common(dj1,dj2)
   })
   
-  
   # ------------------- artist tab -------------------------------------------
   #---------------------- single artist tab-----------------------------------
   reactive_artists_1DJ<-reactive({
     input$artist_update_1DJ
     isolate({      
+      artist_letters <- str_to_title(input$artist_letters)
       withProgress({
         setProgress(message = "Processing...")
         ret_val<-playlists %>%
-          filter(grepl(str_to_title(input$artist_letters),ArtistToken)) %>% 
+          filter(grepl(artist_letters,ArtistToken)) %>% 
           select(ArtistToken) %>%
           distinct() %>%
           arrange(ArtistToken) %>%
@@ -969,11 +970,12 @@ server <- function(input, output, session) {
   # ------------------ SONG TAB -----------------
   reactive_songs_letters<-reactive({
     input$song_update_1
-    isolate({      
+    isolate({
+      song_letters <- str_to_title(input$song_letters)
       withProgress({
         setProgress(message = "Processing...")
         ret_val<-playlists %>%
-          filter(str_detect(Title,str_to_title(!!input$song_letters))) %>% 
+          filter(grepl(song_letters,Title)) %>% 
           select(Title) %>%
           distinct() %>%
           arrange(Title)
@@ -1047,9 +1049,9 @@ server <- function(input, output, session) {
   })
 # WHY WONT GT WORK
 #   output$playlist_table<-gt::render_gt({
-#     get_playlists(input$show_selection_5,input$playlist_date_range) |> gt() |>
-# #     get_playlists() |> gt() |>
-#       tab_header(title = "Playlist") |>
+#     get_playlists(input$show_selection_5,input$playlist_date_range) %>% gt() %>%
+# #     get_playlists() %>% gt() %>%
+#       tab_header(title = "Playlist") %>%
 #       opt_stylize(style=2,color = "green")
 #    })
   # output$playlist_table<-renderDataTable({
