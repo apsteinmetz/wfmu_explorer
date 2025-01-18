@@ -1,7 +1,7 @@
 ---
 title: "WFMU Playlist Explorer"
-version: 0.9
-date: "April 21 2024"
+version: 0.91
+date: "January 2025"
 output: html_document
 ---
 
@@ -50,6 +50,8 @@ This site is powered by Shiny by RStudio (<https://www.rstudio.com/>) and writte
 -- Art Steinmetz ([apsteinmetz\@yahoo.com](mailto:apsteinmetz@yahoo.com){.email})
 
 ## Change log
+
+\*Changes in 0.91 Optimized all functions to perform best with duckdb.
 
 \*Changes in 0.9 Switched from arrow do duckdb database engine for speed. Added a new panel to show DJ's most distinctive artists.
 
