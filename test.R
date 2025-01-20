@@ -50,7 +50,11 @@ timer <- function(func_name) {
 load('data/djdtm.rdata') # document term object for similarity
 load('data/all_artisttokens.rdata') # document term object for similarity
 playlists <- duckplyr_df_from_file('data/playlists.parquet', "read_parquet")
-djKey <- duckplyr_df_from_file('data/djKey.parquet', "read_parquet")
+djKey <- duckplyr_df_from_file('data/djKey.parquet',"read_parquet") |> 
+  # preserve only unique DJs
+  distinct(DJ, .keep_all = TRUE) |> 
+  arrange(ShowName)
+
 djSimilarity <- duckplyr_df_from_file('data/dj_similarity_tidy.parquet', "read_parquet")
 djDistinctive <- duckplyr_df_from_file('data/distinctive_artists.parquet', "read_parquet")
 # # remove all loaded files
@@ -869,4 +873,7 @@ get_playlists2<-(function(show= "Diane's Kamikaze Fun Machine",
   # output$playlist_table<-renderDataTable({
   #   get_playlists(input$show_selection_5,input$playlist_date_range)
   # })
+  
+  HTML(paste0("tags$a(href = ",profile_URL," ',somthing')"))
+  
   

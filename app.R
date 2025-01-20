@@ -28,7 +28,10 @@ methods_overwrite()
 
 load('data/djdtm.rdata') # document term object for similarity
 playlists <- duckplyr_df_from_file('data/playlists.parquet',"read_parquet")
-djKey <- duckplyr_df_from_file('data/djKey.parquet',"read_parquet")
+djKey <- duckplyr_df_from_file('data/djKey.parquet',"read_parquet") |> 
+  # preserve only unique DJs
+  distinct(DJ, .keep_all = TRUE)|> 
+  arrange(ShowName)
 djSimilarity <- duckplyr_df_from_file('data/dj_similarity_tidy.parquet',"read_parquet")
 djDistinctive <- duckplyr_df_from_file('data/distinctive_artists.parquet',"read_parquet")
 
@@ -60,7 +63,7 @@ all_artisttokens <- distinct(select(playlists,ArtistToken)) %>% pull()
 
 #  DEFINE USER INTERFACE ===============================================================
 ui <- {
-  navbarPage("WFMU Playlist Explorer BETA VERSION 0.9",theme = shinytheme("darkly"),
+  navbarPage("WFMU Playlist Explorer",theme = shinytheme("darkly"),
                  # -- Add Tracking JS File 
                  #rest of UI doesn't initiate unless tab is clicked on if the code below runs
                  #tags$head(includeScript("google-analytics.js"))
@@ -69,7 +72,10 @@ ui <- {
                  tags$head(includeHTML(("google-analytics.html"))),
                  # --------- Station TAB ----------------------------------
                  tabPanel("Station",
-                          titlePanel("Top Artists and Songs Played on WFMU"),
+                          titlePanel(HTML(paste0("Top Artists and Songs Played on ",
+                                                 a("WFMU", href="https://wfmu.org")))),
+                          # tagList(a("WFMU", href="https://wfmu.org")),
+                          # a("WFMU Home Page", href="https://wfmu.org"),
                           fluidPage(
                             # ---- Sidebar layout with input and output definitions ----
                             sidebarLayout(
@@ -113,8 +119,11 @@ ui <- {
                                      sidebarLayout(
                                        sidebarPanel(
                                          selectInput("show_selection", "Show Name:",
-                                                     choices = djKey$ShowName,
+                                                     choices = sort(djKey$ShowName),
                                                      selected = "Diane's Kamikaze Fun Machine"),
+                                         hr(),
+                                         # diplay a clickable url
+                                         uiOutput("dj_profile_link"),
                                          hr(),
                                          uiOutput("DJ_date_slider"),
                                          #, actionButton("DJ_update","Update")
@@ -149,7 +158,7 @@ ui <- {
                                        # Sidebar with a slider and selection inputs
                                        sidebarPanel(
                                          selectInput("show_selection_2", "Show Name:",
-                                                     choices = djKey$ShowName,
+                                                     choices = sort(djKey$ShowName),
                                                      selected = "Diane's Kamikaze Fun Machine")
                                        ),
 
@@ -172,12 +181,12 @@ ui <- {
                                      fluidRow(
                                        column(4,
                                               selectInput("show_selection_1DJ", "Show Name:",
-                                                          choices = djKey$ShowName,
+                                                          choices = sort(djKey$ShowName),
                                                           selected = "Diane's Kamikaze Fun Machine")
                                        ),
                                        column(4,
                                               selectInput("show_selection_4", "Show Name:",
-                                                          choices = djKey$ShowName,
+                                                          choices = sort(djKey$ShowName),
                                                           selected = 'Bob Brainen')
                                        )
                                      ),
@@ -344,8 +353,10 @@ ui <- {
                               fluidRow(
                                 h4("Choose a Show:"),
                                 selectInput("show_selection_5", "Show Name:",
-                                            choices = djKey$ShowName,
+                                            choices = sort(djKey$ShowName),
                                             selected = "Diane's Kamikaze Fun Machine"),
+                                uiOutput("dj_playlist_link"),
+                                hr(),
                                 h4('Choose Date Range:'), #just to make some space for calendar
                                 dateRangeInput("playlist_date_range",
                                                "Date Range:",
@@ -388,6 +399,7 @@ ui <- {
 }
 # DEFINE SERVER ===============================================================
 server <- function(input, output, session) {
+# QUERY FUNCTIONS --------------------------------------------------------------
   # -------------- FUNCTIONS FOR STATION TAB -----------------------------
   get_top_artists<-function(onAir="ALL",years_range = c(2010,2023)) {
     years_range <- ytd(years_range)
@@ -683,7 +695,7 @@ server <- function(input, output, session) {
     return(subset_playlists)
   })
   
-  # ---------------OUTPUT SECTION --------------------
+# OUTPUT SECTON --------------------------------------------------------------
   # ------------------- station tab ----------------
   output$cloud <- renderWordcloud2({
     top_artists <-top_artists_reactive()
@@ -707,6 +719,14 @@ server <- function(input, output, session) {
     paste("Songs Played: ")
   })
   # ------------------- DJs tab --------------------
+  output$dj_profile_link <- renderUI({
+    profile_URL <- filter(djKey, ShowName == input$show_selection) |>
+      pull(profileURL)
+    # profile_URL <- a("DJ Profile at WFMU.org",paste0('href = ',profile_URL))
+    url <- a("DJ's Home Page", href=profile_URL)
+    tagList(url)
+  })
+  
   output$DJ_date_slider <- renderUI({
     dj <- filter(djKey,ShowName==input$show_selection)
     sliderInput("DJ_years_range",
@@ -1031,6 +1051,14 @@ server <- function(input, output, session) {
                          # max = ss5 %>% pull(LastShow)
     )
   })
+  output$dj_playlist_link <- renderUI({
+    DJ <- filter(djKey, ShowName == input$show_selection_5) |>
+      pull(DJ)
+    playlist_URL <- paste0("https://wfmu.org/playlists/",DJ)
+    url <- a("DJ's Archived Shows at WFMU.org", href=playlist_URL)
+    tagList(url)
+  })
+  
   # output$playlist_table<-DT::renderDataTable({
   #   datatable(get_playlists(input$show_selection_5,input$playlist_date_range),
   #             style = "bootstrap",
@@ -1059,5 +1087,5 @@ server <- function(input, output, session) {
   # })
   
 }
-# -------------- CREATE SHINY APP  -----------------------------------------------------------
+# LAUNCH APP ===============================================================
 shinyApp(ui, server)
