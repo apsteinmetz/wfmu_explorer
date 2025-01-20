@@ -1,6 +1,6 @@
 ---
 title: "WFMU Playlist Explorer"
-version: 0.91
+version: 1.0
 date: "January 2025"
 output: html_document
 ---
@@ -50,6 +50,8 @@ This site is powered by Shiny by RStudio (<https://www.rstudio.com/>) and writte
 -- Art Steinmetz ([apsteinmetz\@yahoo.com](mailto:apsteinmetz@yahoo.com){.email})
 
 ## Change log
+
+\*Changes in 1.0 Links back to WFMU for station, DJ profile page, and DJ archived shows.  Added option to exclude "Wake 'n' Bake" since daily frequency of show distorts picture.
 
 \*Changes in 0.91 Optimized all functions to perform best with duckdb.
 

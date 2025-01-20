@@ -84,6 +84,7 @@ ui <- {
                                             choices = c('ALL','YES','NO'),
                                             selectize = TRUE,
                                             selected = "ALL"),
+                                checkboxInput("exclude_wake", "Exclude Wake 'n' Bake?", value = FALSE),
                                 helpText('Be aware a wide date range could take many seconds to process.'),
                                 sliderInput("years_range_1",
                                             "Year Range:",
@@ -224,6 +225,7 @@ ui <- {
                                          fluidRow(
                                            h4('Artist names reduced to token of first two words.'),
                                            h4("Select one or more artists"),
+                                           checkboxInput("exclude_wake_artists", "Exclude Wake 'n' Bake?", value = FALSE),
                                            selectizeInput("artist_selection_1DJ",
                                                           label = NULL,
                                                           choices = NULL,
@@ -268,6 +270,7 @@ ui <- {
                                        sidebarPanel(
                                          fluidRow(
                                            h4('Artist names reduced to token of first two words.'),
+                                           checkboxInput("exclude_wake_artists_multi", "Exclude Wake 'n' Bake?", value = FALSE),
                                            selectizeInput("artist_selection_multi", h4("Select two or more artists"),
                                                           choices = NULL,
                                                           multiple = TRUE,
@@ -331,7 +334,9 @@ ui <- {
                                 selectInput("song_all_other",
                                             "Threshold of Minimum Plays to show DJ",
                                             selected = 3,
-                                            choices=1:9)
+                                            choices=1:9),
+                                checkboxInput("exclude_wake_songs", "Exclude Wake 'n' Bake?", value = FALSE)
+                                
                               )
                             ),
 
@@ -401,7 +406,9 @@ ui <- {
 server <- function(input, output, session) {
 # QUERY FUNCTIONS --------------------------------------------------------------
   # -------------- FUNCTIONS FOR STATION TAB -----------------------------
-  get_top_artists<-function(onAir="ALL",years_range = c(2010,2023)) {
+  get_top_artists<-function(onAir="ALL",
+                            exclude_wake=FALSE,
+                            years_range = c(2010,2023)) {
     years_range <- ytd(years_range)
     y1 <- years_range[1]
     y2 <- years_range[2]
@@ -410,6 +417,10 @@ server <- function(input, output, session) {
     } else {
       DJ_set <-djKey %>% 
         filter(onSched==onAir)
+    }
+    if (exclude_wake) {
+      DJ_set <- DJ_set %>% 
+        filter(DJ != "WA")
     }
     
     top_artists<-DJ_set %>% 
@@ -425,7 +436,9 @@ server <- function(input, output, session) {
   }
   
   
-  get_top_songs<-(function(onAir='ALL',years_range = c(2010,2023)) {
+  get_top_songs<-(function(onAir='ALL',
+                           exclude_wake = FALSE,
+                           years_range = c(2010,2023)) {
     years_range <- ytd(years_range)
     y1 <- years_range[1]
     y2 <- years_range[2]
@@ -437,6 +450,10 @@ server <- function(input, output, session) {
         filter(onSched==onAir) %>% #on Sched or off?
         select(DJ)
     }  
+    if (exclude_wake) {
+      DJ_set <- DJ_set %>% 
+        filter(DJ != "WA")
+    }
     songs<-DJ_set %>%  
       left_join(playlists,by='DJ') %>%
       filter(AirDate>=y1) %>%  
@@ -458,7 +475,9 @@ server <- function(input, output, session) {
     {
       withProgress({
         setProgress(message = "Processing Artists...")
-        ret_val <- get_top_artists(input$selection,input$years_range_1)
+        ret_val <- get_top_artists(input$selection,
+                                   input$exclude_wake,
+                                   input$years_range_1)
       })
       return(ret_val)
     },ignoreNULL = FALSE)
@@ -468,7 +487,9 @@ server <- function(input, output, session) {
     {
       withProgress({
         setProgress(message = "Processing Songs...")
-        get_top_songs(input$selection,input$years_range_1)
+        get_top_songs(input$selection,
+                      input$exclude_wake,
+                      input$years_range_1)
       })
     },
     ignoreNULL = FALSE)
@@ -587,7 +608,10 @@ server <- function(input, output, session) {
   })
   # ---------------FUNCTIONS FOR ARTIST TAB -----------------------------
   
-  play_count_by_DJ<-memoise(function(artist_token = "Abba",years_range = c(2016,2019),threshold=3){
+  play_count_by_DJ<-memoise(function(artist_token = "Abba",
+                                     years_range = c(2016,2019),
+                                     threshold=3,
+                                     exclude_wake=FALSE){
     years_range <- ytd(years_range)
     y1 <- years_range[1]
     y2 <- years_range[2]
@@ -597,21 +621,29 @@ server <- function(input, output, session) {
       # mutate(DJ=as.character(DJ)) %>% 
       filter(ArtistToken %in% artist_token) %>% 
       as_tibble() %>% 
-      mutate(AirDate=as.yearqtr(AirDate))  %>% 
+      mutate(AirDate=as.yearqtr(AirDate))
+    
+    if (exclude_wake) {
+      pc<-pc %>% 
+        filter(DJ != "WA")
+    }
+    pc <- pc %>% 
       summarise(.by = c(AirDate,DJ),Spins=n()) %>% 
       mutate(DJ = if_else(Spins < threshold, "AllOther", DJ)) %>% 
       summarise(.by = c(AirDate,DJ),Spins=sum(Spins))
-    
-    pc1<-pc %>% 
+
+    pc<-pc %>% 
       left_join(djKey,by='DJ') %>% 
       select(AirDate,Spins,ShowName) %>%
       mutate(ShowName=if_else(is.na(ShowName),"AllOther",ShowName)) %>% 
       arrange(AirDate)
     
-    return(pc1)
+    return(pc)
   })
   
-  play_count_by_artist<-memoise(function(artist_tokens= c("Abba","Beatles"),years_range=c(2012,2015)){
+  play_count_by_artist<-memoise(function(artist_tokens= c("Abba","Beatles"),
+                                         years_range=c(2012,2015),
+                                         exclude_wake = FALSE){
     years_range <- ytd(years_range)
     y1 <- years_range[1]
     y2 <- years_range[2]
@@ -620,28 +652,46 @@ server <- function(input, output, session) {
       filter(AirDate<=y2) %>%  
       filter(ArtistToken %in% artist_tokens) %>% 
       as_tibble() %>% 
-      mutate(AirDate=year(AirDate))  %>% 
+      mutate(AirDate=year(AirDate))
+    
+    if (exclude_wake) {
+      pc<-pc %>% 
+        filter(DJ != "WA")
+    }
+    pc <- pc %>% 
       summarise(.by =c(AirDate,ArtistToken),Spins=n()) %>% 
       arrange(AirDate)
+    
     return(pc)
   })
   
   
-  top_songs_for_artist<-memoise(function(artist_token = "Abba",years_range=c(2012,2015)){
+  top_songs_for_artist <- memoise(function(artist_token = "Abba",
+                                           years_range = c(2012, 2015),
+                                           exclude_wake = FALSE) {
     years_range <- ytd(years_range)
     y1 <- years_range[1]
     y2 <- years_range[2]
-    ts<-playlists %>% 
-      filter(ArtistToken %in% artist_token) %>% 
-      filter(AirDate>=y1) %>%  
-      filter(AirDate<=y2) %>%  
-      summarise(.by =Title,count=n()) %>% 
+    ts <- playlists %>%
+      filter(ArtistToken %in% artist_token) %>%
+      filter(AirDate >= y1) %>%
+      filter(AirDate <= y2)
+    
+    if (exclude_wake) {
+      ts <- ts %>%
+        filter(DJ != "WA")
+    }
+    ts <- ts %>%
+      summarise(.by = Title, count = n()) %>%
       arrange(desc(count))
     return(ts)
   })
   
   # ---------------FUNCTIONS FOR SONG TAB -----------------------------
-  song_play_count_by_DJ<-memoise(function(songs = "Changes",years_range = c(2010,2019),threshold=3){
+  song_play_count_by_DJ<-memoise(function(songs = "Changes",
+                                          years_range = c(2010,2019),
+                                          threshold=3,
+                                          exclude_wake=FALSE){
     years_range <- ytd(years_range)
     y1 <- years_range[1]
     y2 <- years_range[2]
@@ -650,18 +700,23 @@ server <- function(input, output, session) {
       filter(AirDate<=y2) %>%  
       filter(Title %in% songs) %>% 
       as_tibble() %>% 
-      mutate(AirDate=as.yearqtr(AirDate))  %>% 
+      mutate(AirDate=as.yearqtr(AirDate))
+    if (exclude_wake) {
+      pc<-pc %>% 
+        filter(DJ != "WA")
+    }
+    pc <- pc %>%
       summarise(.by = c(AirDate,DJ),Spins=n()) %>% 
       mutate(DJ = if_else(Spins < threshold, "AllOther", DJ)) %>% 
       summarise(.by = c(AirDate,DJ),Spins=sum(Spins))
     
-    pc1<-pc %>% 
+    pc<-pc %>% 
       left_join(djKey,by='DJ') %>% 
       select(AirDate,Spins,ShowName) %>%
       mutate(ShowName=if_else(is.na(ShowName),"AllOther",ShowName)) %>% 
       arrange(AirDate)
     
-    return(pc1)
+    return(pc)
   })
   
   top_artists_for_song<-memoise(function(song="Help",years_range=c(2010,2019)){
@@ -852,6 +907,8 @@ server <- function(input, output, session) {
   
   # ------------------- artist tab -------------------------------------------
   #---------------------- single artist tab-----------------------------------
+  
+  
   reactive_artists_1DJ<-reactive({
     input$artist_update_1DJ
     isolate({      
@@ -864,10 +921,15 @@ server <- function(input, output, session) {
           distinct() %>%
           arrange(ArtistToken) %>%
           pull(ArtistToken)
+        if (input$exclude_wake_artists) {
+          ret_val <- ret_val |> 
+            filter(DJ != "WA")
+        }
       })
     })
     return(ret_val)
   })
+  
   updateSelectizeInput( session = session,
                         inputId = "artist_selection_1DJ", 
                         choices = all_artisttokens, 
@@ -879,7 +941,8 @@ server <- function(input, output, session) {
       setProgress(message = "Processing...")
       ret_val<-play_count_by_DJ(input$artist_selection_1DJ,
                                 input$artist_years_range_1DJ,
-                                as.numeric(input$artist_all_other_1DJ))
+                                as.numeric(input$artist_all_other_1DJ),
+                                input$exclude_wake_artists)
     })
     return(ret_val)
   }
@@ -900,7 +963,9 @@ server <- function(input, output, session) {
     gg
   },bg="black")
   output$top_songs_for_artist_1DJ<-renderTable({
-    top_songs_for_artist(input$artist_selection_1DJ,input$artist_years_range_1DJ)
+    top_songs_for_artist(input$artist_selection_1DJ,
+                         input$artist_years_range_1DJ,
+                         input$exclude_wake_artists)
   })
   output$artist_variants<-renderTable({
     playlists %>% 
@@ -910,14 +975,15 @@ server <- function(input, output, session) {
   })
   #---------------------- multi artist tab -----------------------
   reactive_multi_artists<-reactive({
+    input$exclude_wake_artists_multi
     input$artist_selection_multi
     input$artist_years_range_multi
     isolate({
       withProgress({
         setProgress(message = "Processing...")
-        #multi_tokens<-word(input$multi_artists,1:50) %>% na.omit() %>% as.character()
         ret_val<-play_count_by_artist(input$artist_selection_multi,
-                                      input$artist_years_range_multi)
+                                      input$artist_years_range_multi,
+                                      exclude_wake = input$exclude_wake_artists_multi)
       })
     })
     return(ret_val)
@@ -1010,7 +1076,8 @@ server <- function(input, output, session) {
       setProgress(message = "Processing...")
       ret_val<-song_play_count_by_DJ(input$song_selection,
                                      input$song_years_range,
-                                     as.numeric(input$song_all_other))
+                                     as.numeric(input$song_all_other),
+                                     input$exclude_wake_songs)
     })
     return(ret_val)
   }

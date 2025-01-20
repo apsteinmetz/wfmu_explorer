@@ -87,29 +87,36 @@ ytd <- function(years_range) {
   return(years_range)
 }
 # -------------- FUNCTIONS FOR STATION TAB -----------------------------
-  get_top_artists<-function(onAir="ALL",years_range = c(2010,2023)) {
-    years_range <- ytd(years_range)
-    y1 <- years_range[1]
-    y2 <- years_range[2]
-    if (onAir=='ALL') {
-      DJ_set <- djKey
-      } else {
-      DJ_set <-djKey %>% 
-            filter(onSched==onAir)
-        }
-    
-    top_artists<-DJ_set %>% 
-      left_join(playlists,by='DJ') %>%
-      filter(ArtistToken != "Unknown") %>% 
-      filter(ArtistToken != "") %>% 
-      filter(AirDate>=y1) %>%  
-      filter(AirDate<=y2) %>%  
-      summarize(.by=ArtistToken,play_count=n())%>%
-      arrange(desc(play_count)) %>% 
-      head(100)
-    return(top_artists)
+get_top_artists<-function(onAir="ALL",
+                          exclude_wake=FALSE,
+                          years_range = c(2017,2025)) {
+  years_range <- ytd(years_range)
+  y1 <- years_range[1]
+  y2 <- years_range[2]
+  if (onAir=='ALL') {
+    DJ_set <- djKey
+  } else {
+    DJ_set <-djKey %>% 
+      filter(onSched==onAir)
+  }
+  if (exclude_wake) {
+    DJ_set <- DJ_set %>% 
+      filter(DJ != "WA")
   }
   
+  top_artists<-DJ_set %>% 
+    left_join(playlists,by='DJ') %>%
+    filter(ArtistToken != "Unknown") %>% 
+    filter(ArtistToken != "") %>% 
+    filter(AirDate>=y1) %>%  
+    filter(AirDate<=y2) %>%  
+    summarize(.by=ArtistToken,play_count=n())%>%
+    arrange(desc(play_count)) %>% 
+    head(100)
+  return(top_artists)
+}
+
+
   
   get_top_songs<-(function(onAir='ALL',years_range = c(2010,2023)) {
     years_range <- ytd(years_range)
