@@ -778,7 +778,12 @@ server <- function(input, output, session) {
     profile_URL <- filter(djKey, ShowName == input$show_selection) |>
       pull(profileURL)
     # profile_URL <- a("DJ Profile at WFMU.org",paste0('href = ',profile_URL))
-    url <- a("DJ's Home Page", href=profile_URL)
+    url <- a(" DJ's Home Page ", href=profile_URL,
+             style = "
+             border-radius: 25px;
+             padding: 5px;
+             background-color: teal;
+             color: white")
     tagList(url)
   })
   
@@ -1122,7 +1127,13 @@ server <- function(input, output, session) {
     DJ <- filter(djKey, ShowName == input$show_selection_5) |>
       pull(DJ)
     playlist_URL <- paste0("https://wfmu.org/playlists/",DJ)
-    url <- a("DJ's Archived Shows at WFMU.org", href=playlist_URL)
+    url <- a("DJ's Archived Shows at WFMU.org", href=playlist_URL,
+             style = "
+             border-radius: 25px;
+             padding: 5px;
+             background-color: teal;
+             color: white")
+    tagList(url)
     tagList(url)
   })
   
