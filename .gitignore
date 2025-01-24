@@ -5,3 +5,5 @@ rsconnect
 .Rhistory
 .RData
 *.csv
+app.R
+test_bs

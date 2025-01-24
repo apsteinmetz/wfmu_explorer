@@ -1,4 +1,4 @@
-# WFMU explorer verion 0.9
+# WFMU explorer verion 1.0
 # ----------------- LOAD LIBRARIES ----------------------
 library(dplyr)
 library(tidyr)
@@ -121,10 +121,12 @@ ui <- {
                                        sidebarPanel(
                                          selectInput("show_selection", "Show Name:",
                                                      choices = sort(djKey$ShowName),
-                                                     selected = "Diane's Kamikaze Fun Machine"),
+                                                     selected = "Ken"),
                                          hr(),
                                          # diplay a clickable url
                                          uiOutput("dj_profile_link"),
+                                         hr(),
+                                         htmlOutput("other_show_names"),
                                          hr(),
                                          uiOutput("DJ_date_slider"),
                                          #, actionButton("DJ_update","Update")
@@ -160,7 +162,7 @@ ui <- {
                                        sidebarPanel(
                                          selectInput("show_selection_2", "Show Name:",
                                                      choices = sort(djKey$ShowName),
-                                                     selected = "Diane's Kamikaze Fun Machine")
+                                                     selected = "Ken")
                                        ),
 
                                        # Show Word Cloud
@@ -183,7 +185,7 @@ ui <- {
                                        column(4,
                                               selectInput("show_selection_1DJ", "Show Name:",
                                                           choices = sort(djKey$ShowName),
-                                                          selected = "Diane's Kamikaze Fun Machine")
+                                                          selected = "Ken")
                                        ),
                                        column(4,
                                               selectInput("show_selection_4", "Show Name:",
@@ -359,7 +361,7 @@ ui <- {
                                 h4("Choose a Show:"),
                                 selectInput("show_selection_5", "Show Name:",
                                             choices = sort(djKey$ShowName),
-                                            selected = "Diane's Kamikaze Fun Machine"),
+                                            selected = "Ken"),
                                 uiOutput("dj_playlist_link"),
                                 hr(),
                                 h4('Choose Date Range:'), #just to make some space for calendar
@@ -499,6 +501,14 @@ server <- function(input, output, session) {
   })
   
   # -------------- FUNCTIONS FOR DJS TAB -----------------------------
+  get_other_shownames <- function(url,base_showname) {
+    html <- read_html(url)
+    all_shownames <- html %>%
+      html_nodes(".KDBprogram + a") |> 
+      html_text()
+     return(all_shownames[all_shownames != base_showname])
+    }
+  
   get_top_artists_DJ<-memoise(function(dj="TW",years_range = c(2017,2019)) {
     years_range <- ytd(years_range)
     y1 <- years_range[1]
@@ -733,7 +743,7 @@ server <- function(input, output, session) {
   })
   
   # ------------------ stuff for playlists tab --------------
-  get_playlists<-memoise(function(show= "Diane's Kamikaze Fun Machine",
+  get_playlists<-memoise(function(show= "Ken",
                             date_range=c(as.Date("2024-01-02"),as.Date("2024-02-01"))){
     d1 = date_range[1]
     d2 = date_range[2]
@@ -785,6 +795,18 @@ server <- function(input, output, session) {
              background-color: teal;
              color: white")
     tagList(url)
+  })
+  output$other_show_names <- renderUI({
+    base_show <- filter(djKey, ShowName == input$show_selection)
+    other_shows <- get_other_shownames(base_show$profileURL, base_show$ShowName)
+    if (length(other_shows)  > 0) {
+      other_shows <- paste("<h4>Other shows from this DJ:<h5><br>", 
+                           paste(other_shows, collapse = "<br>"),
+                           collapse = "<br>")
+    } else {
+      other_shows <- "This is DJ's only show."
+    }
+    return(HTML(other_shows))
   })
   
   output$DJ_date_slider <- renderUI({
