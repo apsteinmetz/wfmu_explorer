@@ -134,7 +134,7 @@ ui <- {
                                          #, actionButton("DJ_update","Update")
                                          hr(),
                                          h4('Distinctive Artists'),
-                                         h4('Artists that are played often by this DJ but seldom by others'),
+                                         h4('Artists that are played relatively more by this DJ than other DJs'),
                                          tableOutput("DJ_table_distinct_artists"),
                                          hr(),
                                          h5("If you're curious, this is a term frequency - inverse document frequency (TF-IDF) analysis.")
