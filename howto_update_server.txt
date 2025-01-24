@@ -51,6 +51,8 @@ sudo su - -c "R -e \"install.packages('duckdb')\""
 sudo su - -c "R -e \"install.packages('duckplyr')\""
 sudo su - -c "R -e \"install.packages('jsonlite')\""
 sudo su - -c "R -e \"install.packages('gt')\""
+sudo su - -c "R -e \"install.packages('htmltools')\""
+sudo su - -c "R -e \"install.packages('rvest')\""
 
 # no longer used
 sudo su - -c "R -e \"install.packages('rmarkdown')\""

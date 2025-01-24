@@ -3,6 +3,8 @@
 library(dplyr)
 library(tidyr)
 library(jsonlite)
+library(htmltools)
+library(rvest)
 library(shiny)
 library(shinycssloaders)
 library(shinythemes)
