@@ -128,8 +128,8 @@ ui <- {
                                          # diplay a clickable url
                                          uiOutput("dj_profile_link"),
                                          hr(),
-                                         htmlOutput("other_show_names"),
-                                         hr(),
+                                         # htmlOutput("other_show_names"),
+                                         # hr(),
                                          uiOutput("DJ_date_slider"),
                                          #, actionButton("DJ_update","Update")
                                          hr(),
