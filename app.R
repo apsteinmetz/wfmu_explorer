@@ -128,8 +128,8 @@ ui <- {
                                          # diplay a clickable url
                                          uiOutput("dj_profile_link"),
                                          hr(),
-                                         # htmlOutput("other_show_names"),
-                                         # hr(),
+                                         htmlOutput("other_show_names"),
+                                         hr(),
                                          uiOutput("DJ_date_slider"),
                                          #, actionButton("DJ_update","Update")
                                          hr(),
@@ -503,14 +503,7 @@ server <- function(input, output, session) {
   })
   
   # -------------- FUNCTIONS FOR DJS TAB -----------------------------
-  get_other_shownames <- function(url,base_showname) {
-    html <- read_html(url)
-    all_shownames <- html %>%
-      html_nodes(".KDBprogram + a") |> 
-      html_text()
-     return(all_shownames[all_shownames != base_showname])
-    }
-  
+
   get_top_artists_DJ<-memoise(function(dj="TW",years_range = c(2017,2019)) {
     years_range <- ytd(years_range)
     y1 <- years_range[1]
@@ -800,14 +793,15 @@ server <- function(input, output, session) {
   })
   output$other_show_names <- renderUI({
     base_show <- filter(djKey, ShowName == input$show_selection)
-    other_shows <- get_other_shownames(base_show$profileURL, base_show$ShowName)
+    other_shows <- base_show$other_shows |> 
+      str_replace_all("\\n","<br>")
     if (length(other_shows)  > 0) {
-      other_shows <- paste("<h4>Other shows from this DJ:<h5><br>", 
-                           paste(other_shows, collapse = "<br>"),
-                           collapse = "<br>")
+      other_shows <- paste0("<h4>Other shows from this DJ:<h5><br>", 
+                           other_shows)
     } else {
       other_shows <- "This is DJ's only show."
     }
+    cat(other_shows)
     return(HTML(other_shows))
   })
   
