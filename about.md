@@ -47,13 +47,15 @@ This site is powered by Shiny by RStudio (<https://www.rstudio.com/>) and writte
 
 </iframe>
 
--- Art Steinmetz ([apsteinmetz\@yahoo.com](mailto:apsteinmetz@yahoo.com){.email})
+#### -- Art Steinmetz 
+#### Contact: [apsteinmetz\@yahoo.com](mailto:apsteinmetz@yahoo.com))
+#### More about me: [artsteinmetz.com](https://artsteinmetz.com)
 
 ## Change log
 
-\*Changes in 1.0 Links back to WFMU for station, DJ profile page, and DJ archived shows.  Added option to exclude "Wake 'n' Bake" since daily frequency of show distorts picture.
+\*Out of Beta! Changes in 1.0 Links back to WFMU for station, DJ profile page, and DJ archived shows.  Added option to exclude "Wake 'n' Bake" since daily frequency of show distorts picture.
 
-\*Changes in 0.91 Optimized all functions to perform best with duckdb.
+\*Changes in 0.91 Optimized all functions to perform best with duckdb.  Much faster, less crashy.
 
 \*Changes in 0.9 Switched from arrow do duckdb database engine for speed. Added a new panel to show DJ's most distinctive artists.
 
