@@ -76,8 +76,7 @@ ui <- {
                  tabPanel("Station",
                           titlePanel(HTML(paste0("Top Artists and Songs Played on ",
                                                  a("WFMU", href="https://wfmu.org")))),
-                          # tagList(a("WFMU", href="https://wfmu.org")),
-                          # a("WFMU Home Page", href="https://wfmu.org"),
+                          textOutput("date_span"),
                           fluidPage(
                             # ---- Sidebar layout with input and output definitions ----
                             sidebarLayout(
@@ -410,6 +409,7 @@ ui <- {
 server <- function(input, output, session) {
 # QUERY FUNCTIONS --------------------------------------------------------------
   # -------------- FUNCTIONS FOR STATION TAB -----------------------------
+  
   get_top_artists<-function(onAir="ALL",
                             exclude_wake=FALSE,
                             years_range = c(2010,2023)) {
@@ -777,6 +777,9 @@ server <- function(input, output, session) {
   })
   output$play_count_2 <- renderText({
     paste("Songs Played: ")
+  })
+  output$date_span <- renderText({
+    paste("Updated through",max(playlists$AirDate))
   })
   # ------------------- DJs tab --------------------
   output$dj_profile_link <- renderUI({
