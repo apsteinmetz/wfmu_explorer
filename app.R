@@ -22,9 +22,21 @@ library(gt)
 library(DT)
 library(bslib)
 
-options("dplyr.summarise.inform"= FALSE)
-options(duckdb.materialize_message = FALSE)
 methods_overwrite()
+
+fallback_config(
+  reset_all = FALSE,
+  info = FALSE,
+  logging = FALSE,
+  autoupload = FALSE,
+  verbose = FALSE
+)
+
+fallback_review(oldest = NULL, newest = NULL, detail = TRUE)
+
+fallback_upload(oldest = NULL, newest = NULL, strict = TRUE)
+
+fallback_purge(oldest = NULL, newest = NULL)
 
 load('data/djdtm.rdata') # document term object for similarity
 playlists <- duckplyr_df_from_file('data/playlists.parquet',"read_parquet")
@@ -38,7 +50,7 @@ djDistinctive <- duckplyr_df_from_file('data/distinctive_artists.parquet',"read_
 source("wordcloud2a.R")
 
 # ----------------- DO SETUP ----------------------
-HOST_URL<- "wfmu.artsteinmetz.com"
+HOST_URL<- "wfmu.playlistanalyzer.net"
 #playlists <- playlists %>% mutate_if(is.character,str_squish)
 default_song<-"Help"
 default_artist<-'Abba'
