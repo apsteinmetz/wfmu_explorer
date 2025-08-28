@@ -28,6 +28,7 @@ options("dplyr.summarise.inform"= FALSE)
 options(duckdb.materialize_message = FALSE)
 methods_overwrite()
 
+
 load('data/djdtm.rdata') # document term object for similarity
 playlists <- duckplyr_df_from_file('data/playlists.parquet',"read_parquet")
 djKey <- duckplyr_df_from_file('data/djKey.parquet',"read_parquet") |> 
