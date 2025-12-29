@@ -30,8 +30,8 @@ methods_overwrite()
 
 
 load('data/djdtm.rdata') # document term object for similarity
-playlists <- duckplyr_df_from_file('data/playlists.parquet', "read_parquet")
-djKey <- duckplyr_df_from_file('data/djKey.parquet', "read_parquet") |>
+playlists <- read_file_duckdb('data/playlists.parquet', "read_parquet")
+djKey <- read_file_duckdb('data/djKey.parquet', "read_parquet") |>
   # preserve only unique DJs
   distinct(DJ, .keep_all = TRUE) |>
   arrange(ShowName)
@@ -54,8 +54,8 @@ default_artist <- 'Abba'
 default_artist_multi <- c('Abba', 'Beatles')
 bot_shows <- c("NO", "RQ", "SR") # show bots
 
-max_date <- max(playlists$AirDate)
-min_date <- min(playlists$AirDate)
+max_date <- summarize(playlists, max(AirDate)) |> pull()
+min_date <- summarize(playlists, min(AirDate)) |> pull()
 max_year <- max(year(max_date))
 min_year <- min(year(min_date))
 
@@ -521,7 +521,7 @@ server <- function(input, output, session) {
   # -------------- FUNCTIONS FOR STATION TAB -----------------------------
 
   get_top_artists <- function(
-    onAir = "ALL",
+    onSched = "ALL",
     exclude_wake = FALSE,
     exclude_bots = TRUE,
     years_range = c(2010, 2023)
@@ -529,11 +529,11 @@ server <- function(input, output, session) {
     years_range <- ytd(years_range)
     y1 <- years_range[1]
     y2 <- years_range[2]
-    if (onAir == 'ALL') {
+    if (onSched == 'ALL') {
       DJ_set <- djKey
     } else {
       DJ_set <- djKey %>%
-        filter(onSched == onAir)
+        filter(onSched == onSched)
     }
     if (exclude_wake) {
       DJ_set <- DJ_set %>%
@@ -556,8 +556,8 @@ server <- function(input, output, session) {
     return(top_artists)
   }
 
-  get_top_songs <- (function(
-    onAir = 'ALL',
+  get_top_songs <- function(
+    onSched = 'ALL',
     exclude_wake = FALSE,
     exclude_bots = TRUE,
     years_range = c(1980, 2030)
@@ -565,12 +565,12 @@ server <- function(input, output, session) {
     years_range <- ytd(years_range)
     y1 <- years_range[1]
     y2 <- years_range[2]
-    if (onAir == 'ALL') {
+    if (onSched == 'ALL') {
       DJ_set <- djKey %>%
         select(DJ)
     } else {
       DJ_set <- djKey %>%
-        filter(onSched == onAir) %>% #on Sched or off?
+        filter(onSched == onSched) %>% #on Sched or off?
         select(DJ)
     }
     if (exclude_wake) {
@@ -590,9 +590,12 @@ server <- function(input, output, session) {
       summarize(.by = c(ArtistToken, Title), play_count = n()) %>%
       arrange(desc(play_count))
 
-    top_songs <- list(count = nrow(songs), songs = head(songs, 25))
+    top_songs <- list(
+      count = pull(summarise(songs, n())),
+      songs = head(songs, 25)
+    )
     return(top_songs)
-  })
+  }
 
   # Note that we use eventReactive() here, which depends on
   # input$update (the action button), so that the output is only
@@ -929,7 +932,7 @@ server <- function(input, output, session) {
     paste("Songs Played: ")
   })
   output$date_span <- renderText({
-    paste("Updated through", max(playlists$AirDate))
+    paste("Updated through", max_date)
   })
   # ------------------- DJs tab --------------------
   output$dj_profile_link <- renderUI({
