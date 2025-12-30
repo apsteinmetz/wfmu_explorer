@@ -1,4 +1,6 @@
 # WFMU explorer verion 1.0# ----------------- LOAD LIBRARIES ----------------------
+# ----------------- DO SETUP ----------------------
+
 library(dplyr)
 library(tidyr)
 library(jsonlite)
@@ -45,7 +47,6 @@ djDistinctive <- read_file_duckdb(
 
 source("wordcloud2a.R")
 
-# ----------------- DO SETUP ----------------------
 HOST_URL <- "wfmu.artsteinmetz.com"
 default_song <- "Help"
 default_artist <- 'Abba'
@@ -418,19 +419,33 @@ ui <- {
       titlePanel("Find Songs"),
       sidebarLayout(
         # Sidebar with a slider and selection inputs
+        # In the Songs tabPanel sidebarPanel:
         sidebarPanel(
-          h4('1) Start by narrowing down the list of songs.'),
-          h4('Type all or part of the song name then click "Find Songs."'),
+          h4('Type to search for a song (minimum 2 characters)'),
           textInput(
-            "song_letters",
-            label = h4("Give me a clue!"),
-            value = default_song
+            "song_search_text",
+            label = NULL,
+            placeholder = "Enter song title (min 2 characters)..."
           ),
-          actionButton("song_update_1", "Find Songs"),
-          h4('2) Click below to choose the specific song(s).'),
-          h5('You can select more than one'),
-          uiOutput('SelectSong'),
-          h4('3) Change the date range?'),
+          actionButton(
+            "song_search_button",
+            "Search Songs",
+            class = "btn-primary"
+          ),
+          hr(),
+          selectizeInput(
+            "song_selection",
+            label = "Select song(s):",
+            choices = NULL,
+            multiple = TRUE,
+            options = list(
+              placeholder = 'Search above, then select from results...',
+              maxOptions = 100,
+              maxItems = 10
+            )
+          ),
+
+          h4('Change the date range?'),
           sliderInput(
             "song_years_range",
             "Year Range:",
@@ -440,7 +455,7 @@ ui <- {
             value = c(2002, max_year)
           ),
           fluidRow(
-            h4('4) Change threshold to show DJ?'),
+            h4('Change threshold to show DJ?'),
             selectInput(
               "song_all_other",
               "Threshold of Minimum Plays to show DJ",
@@ -1337,21 +1352,44 @@ server <- function(input, output, session) {
   )
 
   # ------------------ SONG TAB -----------------
-  reactive_songs_letters <- reactive({
-    input$song_update_1
-    isolate({
-      song_letters <- str_to_title(input$song_letters)
-      withProgress({
-        setProgress(message = "Processing...")
-        ret_val <- playlists %>%
-          filter(grepl(song_letters, Title)) %>%
-          select(Title) %>%
-          distinct() %>%
-          arrange(Title)
-      })
-    })
-    return(ret_val)
-  })
+  # In the server function, replace the two-stage song selection with:
+
+  # Initialize selectizeInput with server-side processing
+  updateSelectizeInput(
+    session = session,
+    inputId = "song_selection",
+    choices = character(0), # Start with empty choices
+    server = TRUE
+  )
+
+  # Create a reactive that filters songs based on input
+  observeEvent(
+    input$song_search_button,
+    {
+      query <- input$song_search_text
+
+      if (!is.null(query) && nchar(query) >= 2) {
+        withProgress(message = "Searching songs...", {
+          filtered_songs <- playlists |>
+            as_tibble() |>
+            filter(grepl(query, Title, ignore.case = TRUE)) |>
+            distinct(Title) |>
+            arrange(Title) |>
+            # head(100) |>
+            pull(Title)
+
+          updateSelectizeInput(
+            session = session,
+            inputId = "song_selection",
+            choices = filtered_songs,
+            server = TRUE
+          )
+        })
+      }
+    },
+    ignoreNULL = TRUE,
+    ignoreInit = TRUE
+  )
 
   process_songs <- function() {
     withProgress({
@@ -1366,16 +1404,6 @@ server <- function(input, output, session) {
     return(ret_val)
   }
 
-  output$SelectSong <- renderUI({
-    song_choices <- reactive_songs_letters()
-    selectizeInput(
-      "song_selection",
-      h5("Select song"),
-      selected = "Help",
-      choices = song_choices,
-      multiple = TRUE
-    )
-  })
   output$song_history_plot <- renderPlot(
     {
       song_history <- process_songs()
