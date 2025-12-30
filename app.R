@@ -1,5 +1,4 @@
-# WFMU explorer verion 1.0
-# ----------------- LOAD LIBRARIES ----------------------
+# WFMU explorer verion 1.0# ----------------- LOAD LIBRARIES ----------------------
 library(dplyr)
 library(tidyr)
 library(jsonlite)
@@ -35,11 +34,11 @@ djKey <- read_file_duckdb('data/djKey.parquet', "read_parquet") |>
   # preserve only unique DJs
   distinct(DJ, .keep_all = TRUE) |>
   arrange(ShowName)
-djSimilarity <- duckplyr_df_from_file(
+djSimilarity <- read_file_duckdb(
   'data/dj_similarity_tidy.parquet',
   "read_parquet"
 )
-djDistinctive <- duckplyr_df_from_file(
+djDistinctive <- read_file_duckdb(
   'data/distinctive_artists.parquet',
   "read_parquet"
 )
@@ -48,11 +47,10 @@ source("wordcloud2a.R")
 
 # ----------------- DO SETUP ----------------------
 HOST_URL <- "wfmu.artsteinmetz.com"
-#playlists <- playlists %>% mutate_if(is.character,str_squish)
 default_song <- "Help"
 default_artist <- 'Abba'
 default_artist_multi <- c('Abba', 'Beatles')
-bot_shows <- c("NO", "RQ", "SR") # show bots
+bot_shows <- c("NO", "RQ", "SR") # show with bot DJs
 
 max_date <- summarize(playlists, max(AirDate)) |> pull()
 min_date <- summarize(playlists, min(AirDate)) |> pull()
@@ -69,7 +67,16 @@ ytd <- function(years_range) {
 }
 #limit DJ list to DJs that are present in playlist file
 
-djKey <- select(playlists, DJ) %>% distinct() %>% left_join(djKey)
+djKey <- select(playlists, DJ) %>%
+  distinct() %>%
+  left_join(djKey) |>
+  # remove NA Channel DJs
+  filter(!is.na(ShowName))
+
+channel_names <- djKey %>%
+  select(Channel) %>%
+  distinct() %>%
+  pull(Channel)
 
 all_artisttokens <- distinct(select(playlists, ArtistToken)) %>% pull()
 
@@ -97,9 +104,9 @@ ui <- {
         sidebarLayout(
           sidebarPanel(
             selectInput(
-              "selection",
-              "Are the DJs On Current Schedule?:",
-              choices = c('ALL', 'YES', 'NO'),
+              "channel",
+              "Channel:",
+              choices = c('ALL', channel_names),
               selectize = TRUE,
               selected = "ALL"
             ),
@@ -521,7 +528,7 @@ server <- function(input, output, session) {
   # -------------- FUNCTIONS FOR STATION TAB -----------------------------
 
   get_top_artists <- function(
-    onSched = "ALL",
+    channel = "ALL",
     exclude_wake = FALSE,
     exclude_bots = TRUE,
     years_range = c(2010, 2023)
@@ -529,11 +536,11 @@ server <- function(input, output, session) {
     years_range <- ytd(years_range)
     y1 <- years_range[1]
     y2 <- years_range[2]
-    if (onSched == 'ALL') {
+    if (channel == 'ALL') {
       DJ_set <- djKey
     } else {
       DJ_set <- djKey %>%
-        filter(onSched == onSched)
+        filter(Channel == channel)
     }
     if (exclude_wake) {
       DJ_set <- DJ_set %>%
@@ -557,7 +564,7 @@ server <- function(input, output, session) {
   }
 
   get_top_songs <- function(
-    onSched = 'ALL',
+    channel = 'ALL',
     exclude_wake = FALSE,
     exclude_bots = TRUE,
     years_range = c(1980, 2030)
@@ -565,12 +572,12 @@ server <- function(input, output, session) {
     years_range <- ytd(years_range)
     y1 <- years_range[1]
     y2 <- years_range[2]
-    if (onSched == 'ALL') {
+    if (channel == 'ALL') {
       DJ_set <- djKey %>%
         select(DJ)
     } else {
       DJ_set <- djKey %>%
-        filter(onSched == onSched) %>% #on Sched or off?
+        filter(Channel == channel) %>% #on Sched or off?
         select(DJ)
     }
     if (exclude_wake) {
@@ -606,7 +613,7 @@ server <- function(input, output, session) {
       withProgress({
         setProgress(message = "Processing Artists...")
         ret_val <- get_top_artists(
-          input$selection,
+          input$channel,
           input$exclude_wake,
           input$exclude_bots,
           input$years_range_1
@@ -623,7 +630,7 @@ server <- function(input, output, session) {
       withProgress({
         setProgress(message = "Processing Songs...")
         get_top_songs(
-          input$selection,
+          input$channel,
           input$exclude_wake,
           input$exclude_bots,
           input$years_range_1
@@ -680,7 +687,7 @@ server <- function(input, output, session) {
       # add target dj to top of table so we see the 2-letter code for the chord chart
       full_join(filter(djKey, DJ == dj)) %>%
       arrange(desc(Similarity)) %>%
-      select(ShowName, DJ, onSched, showCount, Similarity) %>%
+      select(ShowName, DJ, Channel, showCount, Similarity) %>%
       as_tibble() %>%
       mutate(Similarity = paste0(as.character(trunc(Similarity * 100)), "%"))
     return(similar_DJs)
@@ -764,14 +771,18 @@ server <- function(input, output, session) {
       filter(AirDate <= y2) %>%
       # mutate(DJ=as.character(DJ)) %>%
       filter(ArtistToken %in% artist_token) %>%
-      as_tibble() %>%
-      mutate(AirDate = as.yearqtr(AirDate))
+      as_tibble()
 
     if (exclude_wake) {
       pc <- pc %>%
         filter(DJ != "WA")
     }
+    methods_restore()
     pc <- pc %>%
+      mutate(AirDate = as.yearqtr(AirDate))
+    # methods_overwrite()
+
+    pc <- pc |>
       summarise(.by = c(AirDate, DJ), Spins = n()) %>%
       mutate(DJ = if_else(Spins < threshold, "AllOther", DJ)) %>%
       summarise(.by = c(AirDate, DJ), Spins = sum(Spins))
@@ -781,7 +792,7 @@ server <- function(input, output, session) {
       select(AirDate, Spins, ShowName) %>%
       mutate(ShowName = if_else(is.na(ShowName), "AllOther", ShowName)) %>%
       arrange(AirDate)
-
+    methods_overwrite()
     return(pc)
   })
 
@@ -848,12 +859,15 @@ server <- function(input, output, session) {
       filter(AirDate >= y1) %>%
       filter(AirDate <= y2) %>%
       filter(Title %in% songs) %>%
-      as_tibble() %>%
-      mutate(AirDate = as.yearqtr(AirDate))
+      as_tibble()
+
     if (exclude_wake) {
       pc <- pc %>%
         filter(DJ != "WA")
     }
+    methods_restore()
+    pc <- pc |> mutate(AirDate = as.yearqtr(AirDate))
+
     pc <- pc %>%
       summarise(.by = c(AirDate, DJ), Spins = n()) %>%
       mutate(DJ = if_else(Spins < threshold, "AllOther", DJ)) %>%
@@ -864,6 +878,7 @@ server <- function(input, output, session) {
       select(AirDate, Spins, ShowName) %>%
       mutate(ShowName = if_else(is.na(ShowName), "AllOther", ShowName)) %>%
       arrange(AirDate)
+    methods_overwrite()
 
     return(pc)
   })

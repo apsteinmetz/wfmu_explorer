@@ -1,11 +1,11 @@
 ---
 title: "WFMU Playlist Explorer"
-version: 1.0
-date: "January 2025"
+version: 1.1
+date: "January 2026"
 output: html_document
 ---
 
-![](BadgeCourage.png)
+![](badge.png)
 
 <!-- Global Site Tag (gtag.js) - Google Analytics -->
 
@@ -23,7 +23,7 @@ output: html_document
 ```
 ## About WFMU Playlist Explorer
 
-[WFMU.ORG](http:www.wfmu.org), a free-form, listener-supported radio station, maintains a huge trove of past playlists from many DJ's radio shows. More recently, web-only programming has been added to this. This dataset offers lots of opportunities for analysis. I scraped all the playlists I could from the web site and started asking questions. The data set is here for your own explorations. It represents *over a million plays spanning decades!*
+[WFMU.ORG](http:www.wfmu.org), a free-form, listener-supported radio station, maintains a huge trove of past playlists from many DJ's radio shows. More recently, web-only programming has been added to this. This dataset offers lots of opportunities for analysis. I scraped all the playlists I could from the web site and started asking questions. The data set is here for your own explorations. It represents *over a three million plays spanning decades!*
 
 The web scraping and data-cleaning process was the most time consuming part of the exercise. Playlist tables are not in a consistent format and my HTML skills are rudimentary. Some DJs are ommitted entirely because their playlist formats are too weird (working on it, maybe). I cleaned up the raw data to reduce errors and create consistency. DJ's are inconsistent in how they enter artist names. There are 12 different ways Andy Breckman can misspell "Bruce Springsteen" I take a stab at fixing some of the glaring errors. I'm sure I missed many. Additionally, many artist names are variant due to collaborators with "featuring," "and the," "with," etc. in the name. I condense the first two words of every artist name into an *ArtistToken* and drop the rest. In a very few cases the air date is clearly wrong. I strip those shows out.
 
@@ -39,19 +39,38 @@ Thanks to station manager, Ken Freedman, for giving me permission to scrape the 
 
 wfmu.org is powered by KenzoDB ( <http://kenzodb.com> ) from Ken Garson Systems.
 
-This site is powered by Shiny by RStudio (<https://www.rstudio.com/>) and written in the R data science lanugage.
+This site is powered by Shiny by Post (<https://www.posit.co/>) and written in the R data science lanugage.
 
 **WFMU is listener supported!**
+<style>
+.iframe-container {
+  position: relative;
+  width: 100%;
+  padding-bottom: 30%; /* aspect ratio of image */
+  height: 0;
+  overflow: hidden;
+}
 
-<iframe src="https://pledge.wfmu.org/pledge-widget?program=TW" frameborder="0">
+.iframe-container iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+</style>
 
-</iframe>
+<div class="iframe-container">
+  <iframe src="https://pledge.wfmu.org/pledge-widget"></iframe>
+</div>
 
 #### -- Art Steinmetz 
 #### Contact: [apsteinmetz\@yahoo.com](mailto:apsteinmetz@yahoo.com))
 #### More about me: [artsteinmetz.com](https://artsteinmetz.com)
 
 ## Change log
+\* Changes in 1.1 Added option to exclude robot DJs and select by stream channel.  More playlist formats added to data set.  "Let's Encrypt" certificate added to ensure secure https connection.  Hopefully this will prevent browsers from blocking the app as "not secure."  Playlists file is getting pretty big - swtiched to Github LFS to handle it.
 
 \*Out of Beta! Changes in 1.0 Links back to WFMU for station, DJ profile page, and DJ archived shows.  Added option to exclude "Wake 'n' Bake" since daily frequency of show distorts picture.
 

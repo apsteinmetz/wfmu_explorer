@@ -7,3 +7,4 @@ rsconnect
 *.csv
 app.R
 test_bs
+about_files/*
