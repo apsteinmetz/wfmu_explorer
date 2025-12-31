@@ -1,4 +1,8 @@
 # WFMU explorer verion 1.0# ----------------- LOAD LIBRARIES ----------------------
+options(shiny.minified = TRUE)
+options(shiny.autoreload = FALSE)
+options("dplyr.summarise.inform" = FALSE)
+options(duckdb.materialize_message = FALSE)
 library(dplyr)
 library(tidyr)
 library(jsonlite)
@@ -22,18 +26,18 @@ library(duckplyr)
 library(gt)
 library(DT)
 library(bslib)
-
-options("dplyr.summarise.inform" = FALSE)
-options(duckdb.materialize_message = FALSE)
 methods_overwrite()
 
+# set info to true for debugging
+# fallback_config(info = FALSE, logging = FALSE)
 
 load('data/djdtm.rdata') # document term object for similarity
 playlists <- read_file_duckdb('data/playlists.parquet', "read_parquet")
 djKey <- read_file_duckdb('data/djKey.parquet', "read_parquet") |>
   # preserve only unique DJs
   distinct(DJ, .keep_all = TRUE) |>
-  arrange(ShowName)
+  arrange(ShowName) |>
+  as_tibble()
 djSimilarity <- read_file_duckdb(
   'data/dj_similarity_tidy.parquet',
   "read_parquet"
@@ -688,7 +692,7 @@ server <- function(input, output, session) {
       full_join(filter(djKey, DJ == dj)) %>%
       arrange(desc(Similarity)) %>%
       select(ShowName, DJ, Channel, showCount, Similarity) %>%
-      as_tibble() %>%
+      # as_tibble() %>%
       mutate(Similarity = paste0(as.character(trunc(Similarity * 100)), "%"))
     return(similar_DJs)
   })
@@ -704,7 +708,7 @@ server <- function(input, output, session) {
       filter(DJ == dj1) %>%
       summarise(.by = c(DJ, ArtistToken), n = n()) %>%
       # standardize n
-      mutate(f1 = n / sum(n)) %>%
+      mutate(f1 = n / sum(n, na.rm = TRUE)) %>%
       arrange(desc(f1)) %>%
       head(500) %>%
       # rename n to dj1
@@ -733,7 +737,7 @@ server <- function(input, output, session) {
       filter(DJ == dj1) %>%
       summarise(.by = c(DJ, ArtistToken, Title), n = n()) %>%
       # standardize n
-      mutate(f1 = n / sum(n)) %>%
+      mutate(f1 = n / sum(n, na.rm = TRUE)) |>
       arrange(desc(f1)) %>%
       head(500) %>%
       # rename n to dj1
@@ -742,7 +746,7 @@ server <- function(input, output, session) {
     dj2_songs <- playlists %>%
       filter(DJ == dj2) %>%
       summarise(.by = c(DJ, Title), n = n()) %>%
-      mutate(f2 = n / sum(n)) %>%
+      mutate(f2 = n / sum(n, na.rm = TRUE)) %>%
       arrange(desc(f2)) %>%
       head(500) %>%
       # rename n to dj2
@@ -967,17 +971,17 @@ server <- function(input, output, session) {
   })
   output$other_show_names <- renderUI({
     base_show <- filter(djKey, ShowName == input$show_selection)
-    other_shows <- base_show$other_shows |>
+    other_shows <- base_show$other_shownames |>
       str_replace_all("\\n", "<br>")
-    if (length(other_shows) > 0) {
-      other_shows <- paste0(
-        "<h4>Other shows from this DJ:<h5><br>",
-        other_shows
-      )
-    } else {
-      other_shows <- "This is DJ's only show."
-    }
-    cat(other_shows)
+    # if (length(other_shows) > 0) {
+    other_shows <- paste0(
+      "<h4>Other shows from this DJ:<h5><br>",
+      other_shows
+    )
+    #} else {
+    #  other_shows <- "This is DJ's only show."
+    #}
+    # cat(length(other_shows))
     return(HTML(other_shows))
   })
 
