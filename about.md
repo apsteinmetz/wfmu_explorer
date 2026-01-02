@@ -70,13 +70,12 @@ This site is powered by Shiny by Post (<https://www.posit.co/>) and written in t
 #### More about me: [artsteinmetz.com](https://artsteinmetz.com)
 
 ## Change log
-\* Changes in 1.1 Added option to exclude robot DJs and select by stream channel.  More playlist formats added to data set.  "Let's Encrypt" certificate added to ensure secure https connection.  Hopefully this will prevent browsers from blocking the app as "not secure."  Playlists file is getting pretty big - swtiched to Github LFS to handle it.
-
+\* Changes in 1.1 Added option to exclude robot DJs and select by stream channel.  More playlist formats added to data set.  "Let's Encrypt" certificate added to ensure secure https connection.  Hopefully this will prevent browsers from blocking the app as "not secure."  Playlists file is getting pretty big - over 3 million rows - swtiched to Github LFS to handle it. Ensured all functions stay in duckdb.
 \*Out of Beta! Changes in 1.0 Links back to WFMU for station, DJ profile page, and DJ archived shows.  Added option to exclude "Wake 'n' Bake" since daily frequency of show distorts picture.
 
 \*Changes in 0.91 Optimized all functions to perform best with duckdb.  Much faster, less crashy.
 
-\*Changes in 0.9 Switched from arrow do duckdb database engine for speed. Added a new panel to show DJ's most distinctive artists.
+\*Changes in 0.9 Switched from arrow to duckdb database engine for speed. Added a new panel to show DJ's most distinctive artists.
 
 \*Changes in 0.8 Switched from dtplyr to apache arrow for handling tables for speed. Updated to new versions of Ubuntu, R. Started using `renv` package to isolate app from package updates that might break it.
 
