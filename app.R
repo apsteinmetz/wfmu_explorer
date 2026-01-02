@@ -828,7 +828,9 @@ server <- function(input, output, session) {
     pc <- playlists |>
       filter(AirDate >= y1) |>
       filter(AirDate <= y2) |>
-      filter(ArtistToken %in% artist_tokens) |>
+      filter(ArtistToken %in% artist_tokens)
+    methods_restore()
+    pc <- pc |>
       as_tibble() |>
       mutate(AirDate = year(AirDate))
 
@@ -839,7 +841,7 @@ server <- function(input, output, session) {
     pc <- pc |>
       summarise(.by = c(AirDate, ArtistToken), Spins = n()) |>
       arrange(AirDate)
-
+    methods_overwrite()
     return(pc)
   })
 
@@ -1441,18 +1443,20 @@ server <- function(input, output, session) {
 
   # ------------------- playlists TAB--------------------
   observeEvent(input$reset_playlist_date_range, {
-    ss5 <- filter(djKey, ShowName == input$show_selection_5)
+    ss5 <- input$show_selection_5
+    ss5_key <- filter(djKey, ShowName == ss5)
     updateDateRangeInput(
       session = session,
       inputId = "playlist_date_range",
-      start = pull(ss5, FirstShow),
-      end = pull(ss5, LastShow),
+      start = pull(ss5_key, FirstShow),
+      end = pull(ss5_key, LastShow),
       # min = ss5 |> pull(FirstShow),
       # max = ss5 |> pull(LastShow)
     )
   })
   output$dj_playlist_link <- renderUI({
-    DJ <- filter(djKey, ShowName == input$show_selection_5) |>
+    ss5 <- input$show_selection_5
+    DJ <- filter(djKey, ShowName == ss5) |>
       pull(DJ)
     playlist_URL <- paste0("https://wfmu.org/playlists/", DJ)
     url <- a(
