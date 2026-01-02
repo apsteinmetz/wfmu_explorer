@@ -981,6 +981,8 @@ server <- function(input, output, session) {
     url <- a(
       " DJ's Home Page ",
       href = profile_URL,
+      target = "_blank",
+      rel = "noopener noreferrer",
       style = "
              border-radius: 25px;
              padding: 5px;
@@ -1462,6 +1464,8 @@ server <- function(input, output, session) {
     url <- a(
       "DJ's Archived Shows at WFMU.org",
       href = playlist_URL,
+      target = "_blank",
+      rel = "noopener noreferrer",
       style = "
              border-radius: 25px;
              padding: 5px;
