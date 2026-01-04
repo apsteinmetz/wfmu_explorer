@@ -31,7 +31,7 @@ library(bslib)
 methods_overwrite()
 
 # set info to true for debugging
-fallback_config(info = FALSE, logging = FALSE)
+# fallback_config(info = FALSE, logging = FALSE)
 
 load('data/djdtm.rdata') # document term object for similarity
 load('data/similarity_histogram_gg.rdata') # precomputed histogram ggplot object "gg_sim"
