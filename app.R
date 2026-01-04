@@ -1,6 +1,7 @@
 # WFMU explorer verion 1.1
 # ----------------- LOAD LIBRARIES ----------------------
-Sys.setenv(DUCKPLYR_FORCE = TRUE)
+# options for dev or for deployment
+Sys.setenv(DUCKPLYR_FORCE = FALSE)
 options(shiny.minified = TRUE)
 options(shiny.autoreload = FALSE)
 options("dplyr.summarise.inform" = FALSE)
@@ -30,7 +31,7 @@ library(bslib)
 methods_overwrite()
 
 # set info to true for debugging
-fallback_config(info = TRUE, logging = FALSE)
+fallback_config(info = FALSE, logging = FALSE)
 
 load('data/djdtm.rdata') # document term object for similarity
 load('data/similarity_histogram_gg.rdata') # precomputed histogram ggplot object "gg_sim"
