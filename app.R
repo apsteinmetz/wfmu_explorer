@@ -30,8 +30,79 @@ library(DT)
 library(bslib)
 methods_overwrite()
 
+# ...existing code...
+# --- log unhandled SHINY errors to file -----------------------------------------
+log_dir <- file.path(getwd(), "logs")
+dir.create(log_dir, showWarnings = FALSE, recursive = TRUE)
+
+log_entry <- function(header, text) {
+  fname <- file.path(log_dir, paste0(format(Sys.time(), "%Y%m%d"), ".log"))
+  entry <- paste0(
+    "[",
+    format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"),
+    "] ",
+    header,
+    "\n",
+    text,
+    "\n----------------------------------------------------------------\n"
+  )
+  con <- file(fname, open = "a")
+  writeLines(entry, con)
+  close(con)
+  invisible(NULL)
+}
+
+shiny_error_handler <- function(req, err) {
+  tb <- tryCatch(
+    {
+      utils::capture.output(traceback(max.lines = 100))
+    },
+    error = function(e) "<traceback unavailable>"
+  )
+  call_text <- if (!is.null(err$call)) {
+    paste(deparse(err$call), collapse = "")
+  } else {
+    "NA"
+  }
+  body <- paste0(
+    "message: ",
+    conditionMessage(err),
+    "\n",
+    "class: ",
+    paste(class(err), collapse = ", "),
+    "\n",
+    "call: ",
+    call_text,
+    "\n",
+    "req_path: ",
+    if (!is.null(req$PATH_INFO)) req$PATH_INFO else "NA",
+    "\n",
+    "traceback:\n",
+    paste(tb, collapse = "\n")
+  )
+  log_entry("SHINY ERROR", body)
+  NULL
+}
+
+top_level_error_handler <- function() {
+  last_err <- geterrmessage()
+  body <- paste0(
+    "top-level error: ",
+    last_err,
+    "\n",
+    "sys.calls():\n",
+    paste(utils::capture.output(sys.calls()), collapse = "\n")
+  )
+  log_entry("R ERROR", body)
+  NULL
+}
+
+options(shiny.error = shiny_error_handler)
+options(error = top_level_error_handler)
+# END LOGGER
+
 # set info to true for debugging
-# fallback_config(info = FALSE, logging = FALSE)
+fallback_config(info = FALSE, logging = FALSE)
 
 load('data/djdtm.rdata') # document term object for similarity
 load('data/similarity_histogram_gg.rdata') # precomputed histogram ggplot object "gg_sim"
