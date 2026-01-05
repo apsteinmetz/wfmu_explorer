@@ -39,7 +39,7 @@ Thanks to station manager, Ken Freedman, for giving me permission to scrape the 
 
 wfmu.org is powered by KenzoDB ( <http://kenzodb.com> ) from Ken Garson Systems.
 
-This site is powered by Shiny by Post (<https://www.posit.co/>) and written in the R data science lanugage.
+This site is powered by Shiny by Posit (<https://www.posit.co/>) and written in the R data science lanugage.
 
 **WFMU is listener supported!**
 <style>
