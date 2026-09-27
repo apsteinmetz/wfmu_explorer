@@ -1,4 +1,4 @@
-# WFMU explorer verion 1.1
+# WFMU explorer version 2.0
 # ----------------- LOAD LIBRARIES ----------------------
 # options for dev or for deployment
 Sys.setenv(DUCKPLYR_FORCE = FALSE)
@@ -6,6 +6,7 @@ options(shiny.minified = TRUE)
 options(shiny.autoreload = FALSE)
 options("dplyr.summarise.inform" = FALSE)
 options(duckdb.materialize_message = FALSE)
+options(duckdb.progress_display = FALSE) # keep server logs readable
 library(dplyr)
 library(htmltools)
 library(shiny)
@@ -329,7 +330,7 @@ drop_wake <- function(plays, exclude_wake) {
   if (exclude_wake) plays[plays$DJ != "WA", ] else plays
 }
 
-artist_quarterly_by_dj <- function(plays, threshold = 3, exclude_wake = FALSE) {
+quarterly_by_dj <- function(plays, threshold = 3, exclude_wake = FALSE) {
   plays <- drop_wake(plays, exclude_wake)
   plays$AirDate <- as.yearqtr(plays$AirDate)
   plays |>
@@ -355,6 +356,123 @@ artist_yearly <- function(plays, exclude_wake = FALSE) {
     summarise(.by = c(AirDate, ArtistToken), Spins = as.integer(sum(n))) |>
     arrange(AirDate)
 }
+
+# ----------------- SONG TAB QUERIES ----------------------
+# Type-ahead search index: one row per distinct title with its play count.
+# Lives in DuckDB memory (~26 MB), not in R; built once at startup (~1 s).
+db_exec(
+  "CREATE OR REPLACE TABLE song_index AS
+   SELECT Title, lower(Title) AS title_lc, count(*)::INTEGER AS n
+   FROM read_parquet('data/playlists.parquet')
+   WHERE Title <> '' AND Title <> 'Unknown'
+   GROUP BY Title"
+)
+
+song_search_min_chars <- 2
+
+# case-insensitive "contains" search, most-played first
+search_songs <- function(q, limit = 50) {
+  q <- tolower(trimws(q))
+  if (nchar(q) < song_search_min_chars) {
+    return(tibble(Title = character(), n = integer()))
+  }
+  q_sql <- gsub("'", "''", q, fixed = TRUE)
+  read_sql_duckdb(sprintf(
+    "SELECT Title, n FROM song_index
+     WHERE contains(title_lc, '%s')
+     ORDER BY n DESC, Title
+     LIMIT %d",
+    q_sql,
+    as.integer(limit)
+  )) |>
+    collect()
+}
+
+song_index_lookup <- function(titles) {
+  in_list <- paste0("'", gsub("'", "''", titles, fixed = TRUE), "'", collapse = ", ")
+  read_sql_duckdb(sprintf("SELECT Title, n FROM song_index WHERE Title IN (%s)", in_list)) |>
+    collect()
+}
+
+# selectize option rows. Shiny's selectize wrapper uses valueField "value",
+# labelField "label" and searchField "label" (not selectize's own defaults),
+# so server-loaded options must carry a `label` field.
+song_choices <- function(res) {
+  data.frame(
+    value = res$Title,
+    label = sprintf("%s  (%s plays)", res$Title, format(res$n, big.mark = ",", trim = TRUE)),
+    stringsAsFactors = FALSE
+  )
+}
+
+# named vector for a static selectizeInput(): names are labels, values are titles
+song_choices_named <- function(titles) {
+  ch <- song_choices(song_index_lookup(titles))
+  setNames(ch$value, ch$label)
+}
+default_song_choices <- song_choices_named(default_song)
+
+# shared by the UI and by updateSelectizeInput(), whose config *replaces*
+# the UI's options rather than merging with them
+song_selectize_options <- list(
+  valueField = "value",
+  labelField = "label",
+  searchField = "label",
+  placeholder = "start typing a song title...",
+  loadThrottle = 300,
+  maxOptions = 50,
+  closeAfterSelect = TRUE
+)
+
+# One DuckDB pass per (titles, years), shared by the plot and the artist table
+get_song_plays <- memoise(
+  function(titles, years_range) {
+    yr <- ytd(years_range)
+    y1 <- yr[1]
+    y2 <- yr[2]
+    base <- playlists |>
+      filter(AirDate >= y1, AirDate <= y2)
+    if (length(titles) <= 100) {
+      base <- filter(base, Title %in% titles)
+    } else {
+      base <- semi_join(base, tibble(Title = titles), by = "Title")
+    }
+    base |>
+      summarise(.by = c(AirDate, DJ, ArtistToken), n = n()) |>
+      collect()
+  },
+  cache = cachem::cache_mem(max_size = 50 * 1024^2, max_age = 24 * 3600)
+)
+
+song_top_artists <- function(plays) {
+  plays |>
+    summarise(.by = ArtistToken, count = as.integer(sum(n))) |>
+    arrange(desc(count))
+}
+
+# ----------------- PLAYLIST TAB QUERY ----------------------
+# Dedicated SQL so rows can be ordered by the parquet row number, which
+# reflects play order within a show (the global `playlists` object is
+# untouched). `dj` is a 2-letter code from djKey; dates are Date objects.
+get_playlist <- memoise(
+  function(dj, d1, d2) {
+    read_sql_duckdb(sprintf(
+      "SELECT AirDate, Artist, Title
+       FROM read_parquet('data/playlists.parquet', file_row_number = true)
+       WHERE DJ = '%s' AND AirDate BETWEEN DATE '%s' AND DATE '%s'
+       ORDER BY AirDate, file_row_number",
+      gsub("'", "''", dj, fixed = TRUE),
+      format(as.Date(d1)),
+      format(as.Date(d2))
+    )) |>
+      collect()
+  },
+  # full histories can be tens of MB; keep only a few around, briefly
+  cache = cachem::cache_mem(max_size = 40 * 1024^2, max_age = 6 * 3600)
+)
+
+default_show <- "Ken"
+default_show_last <- djKey$LastShow[djKey$ShowName == default_show][1]
 
 #  DEFINE USER INTERFACE ===============================================================
 ui <- {
@@ -703,18 +821,18 @@ ui <- {
       sidebarLayout(
         # Sidebar with a slider and selection inputs
         sidebarPanel(
-          h4('1) Start by narrowing down the list of songs.'),
-          h4('Type all or part of the song name then click "Find Songs."'),
-          textInput(
-            "song_letters",
-            label = h4("Give me a clue!"),
-            value = default_song
+          h4('1) Choose the song(s).'),
+          h5('Type part of a title; matches appear most-played first.'),
+          h5('You can select more than one.'),
+          selectizeInput(
+            "song_selection",
+            label = NULL,
+            choices = default_song_choices,
+            selected = default_song,
+            multiple = TRUE,
+            options = song_selectize_options
           ),
-          actionButton("song_update_1", "Find Songs"),
-          h4('2) Click below to choose the specific song(s).'),
-          h5('You can select more than one'),
-          uiOutput('SelectSong'),
-          h4('3) Change the date range?'),
+          h4('2) Change the date range?'),
           sliderInput(
             "song_years_range",
             "Year Range:",
@@ -724,7 +842,7 @@ ui <- {
             value = c(2002, max_year)
           ),
           fluidRow(
-            h4('4) Change threshold to show DJ?'),
+            h4('3) Change threshold to show DJ?'),
             selectInput(
               "song_all_other",
               "Threshold of Minimum Plays to show DJ",
@@ -769,15 +887,15 @@ ui <- {
             dateRangeInput(
               "playlist_date_range",
               "Date Range:",
-              start = as.Date("2024-01-02"),
-              end = as.Date("2024-02-01"),
+              # the selected DJ's most recent month; updated on show change
+              start = default_show_last - 30,
+              end = default_show_last,
               min = min_date,
               max = max_date
             ),
             actionButton(
               "reset_playlist_date_range",
-              "Reset Dates to Full History",
-              color = "blue"
+              "Reset Dates to Full History"
             ),
             h4("Important Note:"),
             h5("I have stripped out signature songs"),
@@ -834,83 +952,14 @@ server <- function(input, output, session) {
 
   # ---------------ARTIST TAB -----------------------------
   # Query functions (get_artist_plays, get_artist_variants) and the R rollups
-  # (artist_quarterly_by_dj, artist_top_songs, artist_yearly) are global.
+  # (quarterly_by_dj, artist_top_songs, artist_yearly) are global.
 
-  # ---------------FUNCTIONS FOR SONG TAB -----------------------------
-  song_play_count_by_DJ <- memoise(function(
-    songs = "Changes",
-    years_range = c(2010, 2019),
-    threshold = 3,
-    exclude_wake = FALSE
-  ) {
-    years_range <- ytd(years_range)
-    y1 <- years_range[1]
-    y2 <- years_range[2]
-    pc <- playlists |>
-      filter(AirDate >= y1) |>
-      filter(AirDate <= y2) |>
-      filter(Title %in% songs) |>
-      as_tibble()
+  # ---------------SONG TAB -----------------------------
+  # Query functions (search_songs, get_song_plays, song_top_artists) and the
+  # song_index table are global.
 
-    if (exclude_wake) {
-      pc <- pc |>
-        filter(DJ != "WA")
-    }
-    methods_restore()
-    pc <- pc |> mutate(AirDate = as.yearqtr(AirDate))
-
-    pc <- pc |>
-      summarise(.by = c(AirDate, DJ), Spins = n()) |>
-      mutate(DJ = if_else(Spins < threshold, "AllOther", DJ)) |>
-      summarise(.by = c(AirDate, DJ), Spins = sum(Spins))
-
-    pc <- pc |>
-      left_join(djKey, by = 'DJ') |>
-      select(AirDate, Spins, ShowName) |>
-      mutate(ShowName = if_else(is.na(ShowName), "AllOther", ShowName)) |>
-      arrange(AirDate)
-    methods_overwrite()
-
-    return(pc)
-  })
-
-  top_artists_for_song <- memoise(function(
-    song = "Help",
-    years_range = c(2010, 2019)
-  ) {
-    years_range <- ytd(years_range)
-    y1 <- years_range[1]
-    y2 <- years_range[2]
-    ts <- playlists |>
-      filter(AirDate >= y1) |>
-      filter(AirDate <= y2) |>
-      filter(Title %in% song) |>
-      summarise(.by = c(ArtistToken), count = n()) |>
-      arrange(desc(count))
-    return(ts)
-  })
-
-  # ------------------ stuff for playlists tab --------------
-  get_playlists <- memoise(function(
-    show = "Ken",
-    date_range = c(as.Date("2024-01-02"), as.Date("2024-02-01"))
-  ) {
-    d1 = date_range[1]
-    d2 = date_range[2]
-    subset_playlists <- djKey |>
-      filter(ShowName %in% show) |>
-      select(DJ) |>
-      left_join(playlists, by = "DJ") |>
-      select(-ArtistToken) |>
-      filter(AirDate >= d1) |>
-      filter(AirDate <= d2) |>
-      select(-DJ)
-    # print(date_range) # DEBUG
-    if (nrow(subset_playlists) == 0) {
-      subset_playlists <- data.frame(Title = "No shows in this date range.")
-    }
-    return(subset_playlists)
-  })
+  # ------------------ playlists tab --------------
+  # get_playlist() is global (shared, bounded cache).
 
   # OUTPUT SECTON --------------------------------------------------------------
   # ------------------- station tab ----------------
@@ -1116,7 +1165,7 @@ server <- function(input, output, session) {
 
   output$artist_history_plot_1DJ <- renderPlot(
     {
-      artist_history <- artist_quarterly_by_dj(
+      artist_history <- quarterly_by_dj(
         artist_plays_1DJ(),
         threshold = as.numeric(input$artist_all_other_1DJ),
         exclude_wake = input$exclude_wake_artists
@@ -1238,57 +1287,66 @@ server <- function(input, output, session) {
   )
 
   # ------------------ SONG TAB -----------------
-  reactive_songs_letters <- reactive({
-    input$song_update_1
-    isolate({
-      song_letters <- str_to_title(input$song_letters)
-      withProgress({
-        setProgress(message = "Processing...")
-        ret_val <- playlists |>
-          filter(grepl(song_letters, Title)) |>
-          select(Title) |>
-          distinct() |>
-          arrange(Title)
-      })
-    })
-    return(ret_val)
-  })
-
-  process_songs <- function() {
-    withProgress({
-      setProgress(message = "Processing...")
-      ret_val <- song_play_count_by_DJ(
-        input$song_selection,
-        input$song_years_range,
-        as.numeric(input$song_all_other),
-        input$exclude_wake_songs
+  # Type-ahead: the selectize `load` callback fetches matches from a
+  # per-session data endpoint backed by the DuckDB song_index table.
+  song_search_url <- session$registerDataObj(
+    "song_search",
+    NULL,
+    function(data, req) {
+      q <- shiny::parseQueryString(req$QUERY_STRING)$query
+      res <- song_choices(search_songs(if (is.null(q)) "" else q))
+      structure(
+        list(
+          status = 200L,
+          content_type = "application/json",
+          content = enc2utf8(jsonlite::toJSON(res)),
+          headers = list(`X-Content-Type-Options` = "nosniff")
+        ),
+        class = "httpResponse"
       )
-    })
-    return(ret_val)
-  }
+    }
+  )
+  # initial choice/selection come from the UI; here we only install the
+  # type-ahead loader, which needs this session's endpoint URL. Assign with
+  # `$<-` (not c()) so the I() marker survives and Shiny evals the JS.
+  song_opts <- song_selectize_options
+  song_opts$load <- I(sprintf(
+    "function(query, callback) {
+       if (query.length < %d) return callback();
+       fetch('%s&query=' + encodeURIComponent(query))
+         .then(function(r) { return r.json(); })
+         .then(callback)
+         .catch(function() { callback(); });
+     }",
+    song_search_min_chars,
+    song_search_url
+  ))
+  updateSelectizeInput(session, "song_selection", options = song_opts)
 
-  output$SelectSong <- renderUI({
-    song_choices <- reactive_songs_letters()
-    selectizeInput(
-      "song_selection",
-      h5("Select song"),
-      selected = "Help",
-      choices = song_choices,
-      multiple = TRUE
-    )
+  # one DuckDB pass per (titles, years); threshold / wake toggles are R-only
+  song_plays <- reactive({
+    req(input$song_selection)
+    withProgress(message = "Processing...", {
+      get_song_plays(input$song_selection, input$song_years_range)
+    })
   })
+
   output$song_history_plot <- renderPlot(
     {
-      song_history <- process_songs()
+      song_history <- quarterly_by_dj(
+        song_plays(),
+        threshold = as.numeric(input$song_all_other),
+        exclude_wake = input$exclude_wake_songs
+      )
       gg <- song_history |>
         ggplot(aes(x = AirDate, y = Spins, fill = ShowName)) +
-        geom_col(orientation = "x")
-      scale_x_yearqtr(format = "%Y", guide = guide_axis(check.overlap = TRUE))
+        geom_col(orientation = "x") +
+        scale_x_yearqtr(format = "%Y", guide = guide_axis(check.overlap = TRUE))
       gg <- gg +
         labs(
           title = paste(
             "Number of",
-            input$song_selection,
+            paste(input$song_selection, collapse = ", "),
             "plays every quarter by DJ"
           ),
           x = "",
@@ -1307,30 +1365,38 @@ server <- function(input, output, session) {
     bg = "black"
   )
   output$top_artists_for_song <- renderTable({
-    top_artists_for_song(input$song_selection, input$song_years_range)
+    song_top_artists(song_plays())
   })
 
   # ------------------- playlists TAB--------------------
-  observeEvent(input$reset_playlist_date_range, {
-    ss5 <- input$show_selection_5
-    ss5_key <- filter(djKey, ShowName == ss5)
+  playlist_dj <- reactive({
+    djKey[djKey$ShowName == input$show_selection_5, ][1, ]
+  })
+
+  # new show -> default to its most recent month (UI already holds Ken's)
+  observeEvent(input$show_selection_5, ignoreInit = TRUE, {
+    last <- playlist_dj()$LastShow
     updateDateRangeInput(
-      session = session,
-      inputId = "playlist_date_range",
-      start = pull(ss5_key, FirstShow),
-      end = pull(ss5_key, LastShow),
-      # min = ss5 |> pull(FirstShow),
-      # max = ss5 |> pull(LastShow)
+      session,
+      "playlist_date_range",
+      start = last - 30,
+      end = last
     )
   })
+  observeEvent(input$reset_playlist_date_range, {
+    dj <- playlist_dj()
+    updateDateRangeInput(
+      session,
+      "playlist_date_range",
+      start = dj$FirstShow,
+      end = dj$LastShow
+    )
+  })
+
   output$dj_playlist_link <- renderUI({
-    ss5 <- input$show_selection_5
-    DJ <- filter(djKey, ShowName == ss5) |>
-      pull(DJ)
-    playlist_URL <- paste0("https://wfmu.org/playlists/", DJ)
-    url <- a(
+    a(
       "DJ's Archived Shows at WFMU.org",
-      href = playlist_URL,
+      href = paste0("https://wfmu.org/playlists/", playlist_dj()$DJ),
       target = "_blank",
       rel = "noopener noreferrer",
       style = "
@@ -1339,37 +1405,28 @@ server <- function(input, output, session) {
              background-color: teal;
              color: white"
     )
-    tagList(url)
-    tagList(url)
   })
 
-  # output$playlist_table<-DT::renderDataTable({
-  #   datatable(get_playlists(input$show_selection_5,input$playlist_date_range),
-  #             style = "bootstrap",
-  #             options = list(initComplete = JS(
-  #               "function(settings, json) {",
-  #               "$(this.api().table().header()).css({'background-color': '#000', 'color': '#fff'});",
-  #               "$(this.api().table().body()).css({'background-color': '#000', 'color': '#44d'});",
-  #               "}")
-  #             )
-  #   )
-  # })
+  playlist_data <- reactive({
+    rng <- input$playlist_date_range
+    req(length(rng) == 2, !anyNA(rng), rng[1] <= rng[2])
+    withProgress(message = "Fetching playlist...", {
+      get_playlist(playlist_dj()$DJ, rng[1], rng[2])
+    })
+  })
+
   output$playlist_table <- DT::renderDataTable({
+    df <- playlist_data()
+    if (nrow(df) == 0) {
+      df <- data.frame(Title = "No shows in this date range.")
+    }
     datatable(
-      get_playlists(input$show_selection_5, input$playlist_date_range),
-      style = "bootstrap4"
+      df,
+      style = "bootstrap4",
+      rownames = FALSE,
+      options = list(pageLength = 25, deferRender = TRUE)
     )
   })
-  # WHY WONT GT WORK
-  #   output$playlist_table<-gt::render_gt({
-  #     get_playlists(input$show_selection_5,input$playlist_date_range) |> gt() |>
-  # #     get_playlists() |> gt() |>
-  #       tab_header(title = "Playlist") |>
-  #       opt_stylize(style=2,color = "green")
-  #    })
-  # output$playlist_table<-renderDataTable({
-  #   get_playlists(input$show_selection_5,input$playlist_date_range)
-  # })
 }
 # LAUNCH APP ===============================================================
 shinyApp(ui, server)
