@@ -154,7 +154,207 @@ station_defaults <- list(
   exclude_bots = TRUE,
   years_range = c(max_year - 3, max_year)
 )
-do.call(get_station_stats, station_defaults)
+invisible(do.call(get_station_stats, station_defaults))
+
+# ----------------- DJ TAB QUERIES ----------------------
+# DJ Profile: one filtered base relation feeds both aggregates
+get_dj_stats <- memoise(
+  function(dj = "TW", years_range = c(2017, 2019)) {
+    yr <- ytd(years_range)
+    y1 <- yr[1]
+    y2 <- yr[2]
+    base <- playlists |>
+      select(DJ, AirDate, ArtistToken, Title) |>
+      filter(DJ == dj, AirDate >= y1, AirDate <= y2)
+    list(
+      artists = base |>
+        summarize(.by = ArtistToken, play_count = n()) |>
+        arrange(desc(play_count)) |>
+        head(100) |>
+        collect(),
+      songs = base |>
+        summarize(.by = c(ArtistToken, Title), play_count = n()) |>
+        arrange(desc(play_count)) |>
+        head(25) |>
+        collect()
+    )
+  },
+  cache = cachem::cache_mem(max_size = 30 * 1024^2, max_age = 24 * 3600)
+)
+
+get_similar_DJs <- memoise(
+  function(dj = "KF") {
+    djSimilarity |>
+      filter(DJ1 == dj) |>
+      arrange(desc(Similarity)) |>
+      head(10) |>
+      rename(DJ = DJ2) |>
+      select(DJ, Similarity) |>
+      collect() |>
+      # add target dj so the chord chart has its 2-letter code; self-similarity = 100%
+      bind_rows(tibble(DJ = dj, Similarity = 1)) |>
+      left_join(djKey, by = "DJ") |>
+      arrange(desc(Similarity)) |>
+      select(ShowName, DJ, Channel, showCount, Similarity) |>
+      mutate(Similarity = Similarity * 100)
+  },
+  cache = cachem::cache_mem(max_size = 10 * 1024^2, max_age = 24 * 3600)
+)
+
+get_sim_index <- memoise(
+  function(dj1 = "TW", dj2 = "CF") {
+    djSimilarity |>
+      filter(DJ1 == dj1, DJ2 == dj2) |>
+      pull(Similarity)
+  },
+  cache = cachem::cache_mem(max_size = 5 * 1024^2, max_age = 24 * 3600)
+)
+
+# Compare Two DJs: a single DuckDB pass over both DJs' plays, then derive the
+# artists-in-common and songs-in-common tables in R. `agg` is transient
+# (tens of thousands of rows); only the two 10-row results are cached.
+compare_djs <- memoise(
+  function(dj1 = "TW", dj2 = "CF") {
+    agg <- playlists |>
+      filter(DJ %in% c(dj1, dj2)) |>
+      summarise(.by = c(DJ, ArtistToken, Title), n = n()) |>
+      collect()
+    totals <- agg |> summarise(.by = DJ, total = sum(n))
+
+    # share of each DJ's total plays; keep each DJ's top `top_n` keys, join on
+    # the keys, rank by summed share
+    in_common <- function(keys, top_n = Inf) {
+      by_key <- agg |>
+        summarise(.by = c(DJ, all_of(keys)), n = as.integer(sum(n))) |>
+        left_join(totals, by = "DJ") |>
+        mutate(f = n / total) |>
+        select(-total)
+      side <- function(dj, f_name) {
+        by_key |>
+          filter(DJ == dj) |>
+          arrange(desc(f)) |>
+          head(top_n) |>
+          select(all_of(keys), !!dj := n, !!f_name := f)
+      }
+      inner_join(side(dj1, "f1"), side(dj2, "f2"), by = keys) |>
+        mutate(sum_f = f1 + f2) |>
+        arrange(desc(sum_f)) |>
+        head(10) |>
+        select(all_of(keys), all_of(c(dj1, dj2)))
+    }
+    list(
+      # artists: both DJs' top 500, as in the original app
+      artists = in_common("ArtistToken", top_n = 500),
+      # songs: no cutoff -- two DJs rarely share top-500 artist/title pairs
+      songs = in_common(c("ArtistToken", "Title"))
+    )
+  },
+  cache = cachem::cache_mem(max_size = 10 * 1024^2, max_age = 24 * 3600)
+)
+
+# Lightweight version of the precomputed similarity histogram: keep the
+# binned bars, drop the ~230k raw pair similarities so each render is cheap.
+gg_sim_light <- local({
+  bars <- ggplot2::layer_data(gg_sim, 1)
+  # original maps y = after_stat(count) + 1 on a log10 scale
+  # styled to match the app's other plots (solarized dark on black)
+  ggplot(bars, aes(x = x, y = count + 1)) +
+    geom_col(
+      width = bars$xmax[1] - bars$xmin[1],
+      fill = "#268bd2",
+      # outline in the solarized-dark panel colour to separate adjacent bars
+      colour = "#073642"
+    ) +
+    scale_y_log10(labels = function(x) format(x, scientific = FALSE, trim = TRUE)) +
+    # reading aid in the empty upper-right of the panel (y is log scale)
+    # ggplot2:: because tm/NLP masks annotate()
+    ggplot2::annotate(
+      "text",
+      x = 0.57, y = 3e4, hjust = 1,
+      label = "More Similar",
+      colour = "#93a1a1", size = 5.2 # ~14.8 pt
+    ) +
+    ggplot2::annotate(
+      "segment",
+      x = 0.59, xend = 0.72, y = 3e4, yend = 3e4,
+      colour = "#93a1a1", linewidth = 1,
+      arrow = arrow(length = unit(0.25, "cm"), type = "closed")
+    ) +
+    labs(x = gg_sim$labels$x, y = gg_sim$labels$y, title = gg_sim$labels$title) +
+    # base_size 14 = default 12 + 2 pt for all text elements
+    theme_solarized_2(light = FALSE, base_size = 14) +
+    theme(plot.background = element_rect(fill = "black"))
+})
+
+# ----------------- ARTIST TAB QUERIES ----------------------
+# One DuckDB pass per (tokens, years), shared by Single and Multi Artist and
+# collapsed to (AirDate, DJ, ArtistToken, Title) counts. Threshold, Wake 'n'
+# Bake exclusion and the quarterly/yearly rollups are then cheap R steps on
+# the cached result, so toggling those controls never touches DuckDB.
+get_artist_plays <- memoise(
+  function(tokens, years_range) {
+    yr <- ytd(years_range)
+    y1 <- yr[1]
+    y2 <- yr[2]
+    base <- playlists |>
+      filter(AirDate >= y1, AirDate <= y2)
+    # duckplyr translates %in% only up to 100 values
+    if (length(tokens) <= 100) {
+      base <- filter(base, ArtistToken %in% tokens)
+    } else {
+      base <- semi_join(base, tibble(ArtistToken = tokens), by = "ArtistToken")
+    }
+    base |>
+      summarise(.by = c(AirDate, DJ, ArtistToken, Title), n = n()) |>
+      collect()
+  },
+  cache = cachem::cache_mem(max_size = 50 * 1024^2, max_age = 24 * 3600)
+)
+
+get_artist_variants <- memoise(
+  function(tokens) {
+    playlists |>
+      filter(ArtistToken %in% tokens) |>
+      distinct(Artist) |>
+      arrange(Artist) |>
+      collect()
+  },
+  cache = cachem::cache_mem(max_size = 10 * 1024^2, max_age = 24 * 3600)
+)
+
+# Pure-R rollups of get_artist_plays() output (plain tibbles, no DuckDB).
+# Date conversions are done with base R assignment so duckplyr never sees
+# as.yearqtr()/year() and no methods_restore() toggling is needed.
+drop_wake <- function(plays, exclude_wake) {
+  if (exclude_wake) plays[plays$DJ != "WA", ] else plays
+}
+
+artist_quarterly_by_dj <- function(plays, threshold = 3, exclude_wake = FALSE) {
+  plays <- drop_wake(plays, exclude_wake)
+  plays$AirDate <- as.yearqtr(plays$AirDate)
+  plays |>
+    summarise(.by = c(AirDate, DJ), Spins = as.integer(sum(n))) |>
+    mutate(DJ = if_else(Spins < threshold, "AllOther", DJ)) |>
+    summarise(.by = c(AirDate, DJ), Spins = as.integer(sum(Spins))) |>
+    left_join(select(djKey, DJ, ShowName), by = "DJ") |>
+    mutate(ShowName = if_else(is.na(ShowName), "AllOther", ShowName)) |>
+    select(AirDate, Spins, ShowName) |>
+    arrange(AirDate)
+}
+
+artist_top_songs <- function(plays, exclude_wake = FALSE) {
+  drop_wake(plays, exclude_wake) |>
+    summarise(.by = Title, count = as.integer(sum(n))) |>
+    arrange(desc(count))
+}
+
+artist_yearly <- function(plays, exclude_wake = FALSE) {
+  plays <- drop_wake(plays, exclude_wake)
+  plays$AirDate <- year(plays$AirDate)
+  plays |>
+    summarise(.by = c(AirDate, ArtistToken), Spins = as.integer(sum(n))) |>
+    arrange(AirDate)
+}
 
 #  DEFINE USER INTERFACE ===============================================================
 ui <- {
@@ -628,219 +828,13 @@ server <- function(input, output, session) {
     ignoreNULL = FALSE
   )
 
-  # -------------- FUNCTIONS FOR DJS TAB -----------------------------
+  # -------------- DJS TAB -----------------------------
+  # Query functions (get_dj_stats, get_similar_DJs, get_sim_index, compare_djs)
+  # live at global scope so their memoise caches are shared across sessions.
 
-  get_top_artists_DJ <- memoise(function(
-    dj = "TW",
-    years_range = c(2017, 2019)
-  ) {
-    years_range <- ytd(years_range)
-    y1 <- years_range[1]
-    y2 <- years_range[2]
-    top_artists <- playlists |>
-      filter(DJ == dj) |>
-      filter(AirDate >= y1) |>
-      filter(AirDate <= y2) |>
-      summarize(.by = ArtistToken, play_count = n()) |>
-      arrange(desc(play_count)) |>
-      head(100)
-    return(as_tibble(top_artists))
-  })
-
-  get_top_songs_DJ <- memoise(function(dj = "TW", years_range = c(2017, 2019)) {
-    years_range <- ytd(years_range)
-    y1 <- years_range[1]
-    y2 <- years_range[2]
-    top_songs <- playlists |>
-      filter(DJ == dj) |>
-      filter(AirDate >= y1) |>
-      filter(AirDate <= y2) |>
-      summarize(.by = c(ArtistToken, Title), play_count = n()) |>
-      arrange(desc(play_count)) |>
-      head(25)
-    return(as_tibble(top_songs))
-  })
-
-  get_similar_DJs <- memoise(function(dj = "KF") {
-    dj_key1 <- filter(djKey, DJ == dj)
-    similar_DJs <- djSimilarity |>
-      filter(DJ1 == dj) |>
-      arrange(desc(Similarity)) |>
-      head(10) |>
-      rename(DJ = DJ2) |>
-      left_join(djKey, by = 'DJ') |>
-      # add target dj to top of table so we see the 2-letter code for the chord chart
-      full_join(dj_key1) |>
-      arrange(desc(Similarity)) |>
-      select(ShowName, DJ, Channel, showCount, Similarity) |>
-      # mutate(Similarity = paste0(as.character(trunc(Similarity * 100)), "%"))
-      mutate(Similarity = Similarity * 100)
-    return(similar_DJs)
-  })
-  get_sim_index <- memoise(function(dj1 = "TW", dj2 = "CF") {
-    DJ_sim <- djSimilarity |>
-      filter(DJ1 == dj1, DJ2 == dj2) |>
-      pull(Similarity)
-    return(DJ_sim)
-  })
-  artists_in_common <- memoise(function(dj1 = "TW", dj2 = "CF") {
-    # counts for dj1
-    dj1_artists <- playlists |>
-      filter(DJ == dj1) |>
-      summarise(.by = ArtistToken, n = n()) |>
-      as_tibble()
-    total1 <- summarize(dj1_artists, sum(n, na.rm = TRUE)) |> pull()
-    dj1_artists <- dj1_artists |>
-      mutate(f1 = n / total1) |>
-      arrange(desc(f1)) |>
-      head(500) |>
-      rename(!!dj1 := n)
-
-    # counts for dj2
-    dj2_artists <- playlists |>
-      filter(DJ == dj2) |>
-      summarise(.by = ArtistToken, n = n()) |>
-      as_tibble()
-    total2 <- summarize(dj2_artists, sum(n, na.rm = TRUE)) |> pull()
-    dj2_artists <- dj2_artists |>
-      mutate(f2 = n / total2) |>
-      arrange(desc(f2)) |>
-      head(500) |>
-      rename(!!dj2 := n)
-
-    artists <- inner_join(dj1_artists, dj2_artists, by = "ArtistToken") |>
-      mutate(sum_f = f1 + f2) |>
-      arrange(desc(sum_f)) |>
-      head(10) |>
-      select(ArtistToken, contains(dj1), contains(dj2))
-
-    return(artists)
-  })
-
-  songs_in_common <- memoise(function(dj1 = "TW", dj2 = "CF") {
-    # counts for dj1 (by Title)
-    dj1_songs <- playlists |>
-      filter(DJ == dj1) |>
-      summarise(.by = c(ArtistToken, Title), n = n())
-
-    total1 <- summarize(dj1_songs, sum(n, na.rm = TRUE)) |> pull()
-    dj1_songs <- dj1_songs |>
-      mutate(f1 = n / total1) |>
-      arrange(desc(f1)) |>
-      head(500) |>
-      rename(!!dj1 := n)
-
-    # counts for dj2 (by Title)
-    dj2_songs <- playlists |>
-      filter(DJ == dj2) |>
-      summarise(.by = Title, n = n()) |>
-      as_tibble()
-    total2 <- summarize(dj2_songs, sum(n, na.rm = TRUE)) |> pull()
-    dj2_songs <- dj2_songs |>
-      mutate(f2 = n / total2) |>
-      arrange(desc(f2)) |>
-      head(500) |>
-      rename(!!dj2 := n)
-
-    songs <- inner_join(dj1_songs, dj2_songs, by = "Title") |>
-      mutate(sum_f = f1 + f2) |>
-      arrange(desc(sum_f)) |>
-      head(10) |>
-      select(ArtistToken, Title, contains(dj1), contains(dj2))
-
-    return(songs)
-  })
-  # ---------------FUNCTIONS FOR ARTIST TAB -----------------------------
-
-  play_count_by_DJ <- memoise(function(
-    artist_token = "Abba",
-    years_range = c(2016, 2019),
-    threshold = 3,
-    exclude_wake = FALSE
-  ) {
-    years_range <- ytd(years_range)
-    y1 <- years_range[1]
-    y2 <- years_range[2]
-    pc <- playlists |>
-      filter(AirDate >= y1) |>
-      filter(AirDate <= y2) |>
-      # mutate(DJ=as.character(DJ)) |>
-      filter(ArtistToken %in% artist_token) |>
-      as_tibble()
-
-    if (exclude_wake) {
-      pc <- pc |>
-        filter(DJ != "WA")
-    }
-    methods_restore()
-    pc <- pc |>
-      mutate(AirDate = as.yearqtr(AirDate))
-    # methods_overwrite()
-
-    pc <- pc |>
-      summarise(.by = c(AirDate, DJ), Spins = n()) |>
-      mutate(DJ = if_else(Spins < threshold, "AllOther", DJ)) |>
-      summarise(.by = c(AirDate, DJ), Spins = sum(Spins))
-
-    pc <- pc |>
-      left_join(djKey, by = 'DJ') |>
-      select(AirDate, Spins, ShowName) |>
-      mutate(ShowName = if_else(is.na(ShowName), "AllOther", ShowName)) |>
-      arrange(AirDate)
-    methods_overwrite()
-    return(pc)
-  })
-
-  play_count_by_artist <- memoise(function(
-    artist_tokens = c("Abba", "Beatles"),
-    years_range = c(2012, 2015),
-    exclude_wake = FALSE
-  ) {
-    years_range <- ytd(years_range)
-    y1 <- years_range[1]
-    y2 <- years_range[2]
-    pc <- playlists |>
-      filter(AirDate >= y1) |>
-      filter(AirDate <= y2) |>
-      filter(ArtistToken %in% artist_tokens)
-    methods_restore()
-    pc <- pc |>
-      as_tibble() |>
-      mutate(AirDate = year(AirDate))
-
-    if (exclude_wake) {
-      pc <- pc |>
-        filter(DJ != "WA")
-    }
-    pc <- pc |>
-      summarise(.by = c(AirDate, ArtistToken), Spins = n()) |>
-      arrange(AirDate)
-    methods_overwrite()
-    return(pc)
-  })
-
-  top_songs_for_artist <- memoise(function(
-    artist_token = "Abba",
-    years_range = c(2012, 2015),
-    exclude_wake = FALSE
-  ) {
-    years_range <- ytd(years_range)
-    y1 <- years_range[1]
-    y2 <- years_range[2]
-    ts <- playlists |>
-      filter(ArtistToken %in% artist_token) |>
-      filter(AirDate >= y1) |>
-      filter(AirDate <= y2)
-
-    if (exclude_wake) {
-      ts <- ts |>
-        filter(DJ != "WA")
-    }
-    ts <- ts |>
-      summarise(.by = Title, count = n()) |>
-      arrange(desc(count))
-    return(ts)
-  })
+  # ---------------ARTIST TAB -----------------------------
+  # Query functions (get_artist_plays, get_artist_variants) and the R rollups
+  # (artist_quarterly_by_dj, artist_top_songs, artist_yearly) are global.
 
   # ---------------FUNCTIONS FOR SONG TAB -----------------------------
   song_play_count_by_DJ <- memoise(function(
@@ -943,14 +937,37 @@ server <- function(input, output, session) {
     paste("Updated through", max_date)
   })
   # ------------------- DJs tab --------------------
+  # the djKey row for the selected show; every Profile output reads from this
+  dj_profile <- reactive({
+    djKey[djKey$ShowName == input$show_selection, ][1, ]
+  })
+
+  # Slider value clamped to the selected DJ's active years. The slider is
+  # re-rendered when the show changes, so its value is briefly stale; clamping
+  # makes the stale run identical to the fresh one (a memoise hit) whenever the
+  # slider was at full range.
+  dj_years <- reactive({
+    dj <- dj_profile()
+    lo <- year(dj$FirstShow)
+    hi <- year(dj$LastShow)
+    yr <- input$DJ_years_range
+    if (is.null(yr)) {
+      c(lo, hi)
+    } else {
+      c(max(lo, round(yr[1])), min(hi, round(yr[2])))
+    }
+  })
+
+  dj_stats <- reactive({
+    withProgress(message = "Processing...", {
+      get_dj_stats(dj_profile()$DJ, dj_years())
+    })
+  })
+
   output$dj_profile_link <- renderUI({
-    ss <- input$show_selection
-    profile_URL <- filter(djKey, ShowName == ss) |>
-      pull(profileURL)
-    # profile_URL <- a("DJ Profile at WFMU.org",paste0('href = ',profile_URL))
     url <- a(
       " DJ's Home Page ",
-      href = profile_URL,
+      href = dj_profile()$profileURL,
       target = "_blank",
       rel = "noopener noreferrer",
       style = "
@@ -962,24 +979,13 @@ server <- function(input, output, session) {
     tagList(url)
   })
   output$other_show_names <- renderUI({
-    ss <- input$show_selection
-    other_shows <- filter(djKey, ShowName == ss) |>
-      pull(other_shownames) |>
+    other_shows <- dj_profile()$other_shownames |>
       str_replace_all("\\n", "<br>")
-    other_shows <- paste0(
-      "<h4>Other shows from this DJ:<h5><br>",
-      other_shows
-    )
-    #} else {
-    #  other_shows <- "This is DJ's only show."
-    #}
-    # cat(length(other_shows))
-    return(HTML(other_shows))
+    HTML(paste0("<h4>Other shows from this DJ:<h5><br>", other_shows))
   })
 
   output$DJ_date_slider <- renderUI({
-    ss <- input$show_selection
-    dj <- filter(djKey, ShowName == ss)
+    dj <- dj_profile()
     sliderInput(
       "DJ_years_range",
       "Year Range:",
@@ -992,46 +998,9 @@ server <- function(input, output, session) {
     )
   })
 
-  top_artists_DJ_reactive <- reactive({
-    withProgress({
-      setProgress(message = "Processing Artists...")
-      ss <- input$show_selection
-      DJ <- filter(djKey, ShowName == ss) |> pull(DJ)
-      if (is.null(input$DJ_years_range)) {
-        years_range <- c(1982, year(Sys.Date()))
-      } else {
-        # bug? when slider is on server side round option doesn't work
-        years_range <- c(
-          round(input$DJ_years_range[1]),
-          round(input$DJ_years_range[2])
-        )
-      }
-      ret_val <- get_top_artists_DJ(DJ, years_range)
-    })
-    return(ret_val)
-  })
-  top_songs_DJ_reactive <- reactive({
-    withProgress({
-      setProgress(message = "Processing Songs...")
-      ss <- input$show_selection
-      DJ <- filter(djKey, ShowName == ss) |> pull(DJ)
-      if (is.null(input$DJ_years_range)) {
-        years_range <- c(1982, year(Sys.Date()))
-      } else {
-        years_range <- c(
-          round(input$DJ_years_range[1]),
-          round(input$DJ_years_range[2])
-        )
-      }
-      ret_val <- get_top_songs_DJ(DJ, years_range)
-    })
-    return(ret_val)
-  })
-
   output$DJ_cloud <- renderWordcloud2({
-    top_artists <- top_artists_DJ_reactive()
     wordcloud2a(
-      top_artists,
+      dj_stats()$artists,
       size = 0.3,
       backgroundColor = "black",
       color = 'random-light',
@@ -1039,34 +1008,26 @@ server <- function(input, output, session) {
     )
   })
   output$DJ_table_distinct_artists <- renderTable({
-    ss <- input$show_selection
-    dj1 <- filter(djKey, ShowName == ss) |> pull(DJ)
+    dj1 <- dj_profile()$DJ
     djDistinctive |>
       filter(DJ == dj1) |>
       select(-DJ) |>
-      head(25)
+      head(25) |>
+      collect()
   })
   output$DJ_table_artists <- renderTable({
-    top_artists_DJ_reactive()
+    dj_stats()$artists
   })
   output$DJ_table_songs <- renderTable({
-    top_songs_DJ_reactive()
+    dj_stats()$songs
   })
 
   output$DJ_table_similar <- renderTable({
-    ss2 <- input$show_selection_2
-    dj1 <- filter(djKey, ShowName == ss2) |>
-      pull(DJ)
-    ret_val <- get_similar_DJs(dj1)
-    # make self-similarity 100%
-    ret_val[11, 5] <- 100
-    ret_val
+    get_similar_DJs(show_to_dj[[input$show_selection_2]])
   })
   output$DJ_chord <- renderPlot(
     {
-      ss2 <- input$show_selection_2
-      dj1 <- filter(djKey, ShowName == ss2) |>
-        pull(DJ)
+      dj1 <- show_to_dj[[input$show_selection_2]]
       # get similar djs but remove target dj or matrix stuff will break
       sim_DJs <- get_similar_DJs(dj1) |> filter(DJ != dj1) |> pull(DJ)
       dj_mat <- dj_mat <- as.matrix(djdtm[c(sim_DJs, dj1), ])
@@ -1098,69 +1059,44 @@ server <- function(input, output, session) {
     bg = "black"
   )
 
+  # Compare Two DJs
+  compare_pair <- reactive({
+    c(show_to_dj[[input$show_selection_1DJ]], show_to_dj[[input$show_selection_4]])
+  })
+  compare_stats <- reactive({
+    withProgress(message = "Processing...", {
+      p <- compare_pair()
+      compare_djs(p[1], p[2])
+    })
+  })
+
   output$DJ_sim_index_text <- renderText({
-    ss1 <- input$show_selection_1DJ
-    ss2 <- input$show_selection_4
-    dj1 <- filter(djKey, ShowName == ss1) |> pull(DJ)
-    dj2 <- filter(djKey, ShowName == ss2) |> pull(DJ)
-    paste(round(get_sim_index(dj1, dj2) * 100), "%")
+    p <- compare_pair()
+    paste(round(get_sim_index(p[1], p[2]) * 100), "%")
   })
 
   output$DJ_plot_sim_index <- renderPlot(
     {
-      ss1 <- input$show_selection_1DJ
-      ss2 <- input$show_selection_4
-      dj1 <- filter(djKey, ShowName == ss1) |> pull(DJ)
-      dj2 <- filter(djKey, ShowName == ss2) |> pull(DJ)
-      gg_sim <- gg_sim +
+      p <- compare_pair()
+      gg_sim_light +
         geom_vline(
-          xintercept = get_sim_index(dj1, dj2),
+          xintercept = get_sim_index(p[1], p[2]),
           color = 'yellow',
           linewidth = 2
         )
-      gg_sim
     },
     bg = "black"
   )
 
   output$DJ_table_common_songs <- renderTable({
-    ss1 <- input$show_selection_1DJ
-    ss2 <- input$show_selection_4
-    dj1 <- filter(djKey, ShowName == ss1) |> pull(DJ)
-    dj2 <- filter(djKey, ShowName == ss2) |> pull(DJ)
-    songs_in_common(dj1, dj2)
+    compare_stats()$songs
   })
   output$DJ_table_common_artists <- renderTable({
-    ss1 <- input$show_selection_1DJ
-    ss2 <- input$show_selection_4
-    dj1 <- filter(djKey, ShowName == ss1) |> pull(DJ)
-    dj2 <- filter(djKey, ShowName == ss2) |> pull(DJ)
-    artists_in_common(dj1, dj2)
+    compare_stats()$artists
   })
 
   # ------------------- artist tab -------------------------------------------
   #---------------------- single artist tab-----------------------------------
-
-  reactive_artists_1DJ <- reactive({
-    input$artist_update_1DJ
-    isolate({
-      artist_letters <- str_to_title(input$artist_letters)
-      withProgress({
-        setProgress(message = "Processing...")
-        ret_val <- playlists |>
-          filter(grepl(artist_letters, ArtistToken)) |>
-          select(ArtistToken) |>
-          distinct() |>
-          arrange(ArtistToken) |>
-          pull(ArtistToken)
-        if (input$exclude_wake_artists) {
-          ret_val <- ret_val |>
-            filter(DJ != "WA")
-        }
-      })
-    })
-    return(ret_val)
-  })
 
   updateSelectizeInput(
     session = session,
@@ -1169,28 +1105,27 @@ server <- function(input, output, session) {
     server = TRUE,
     selected = default_artist
   )
-  process_artists_1DJ <- function() {
-    withProgress({
-      setProgress(message = "Processing...")
-      ret_val <- play_count_by_DJ(
-        input$artist_selection_1DJ,
-        input$artist_years_range_1DJ,
-        as.numeric(input$artist_all_other_1DJ),
-        input$exclude_wake_artists
-      )
+
+  # one DuckDB pass per (artists, years); threshold / wake toggles are R-only
+  artist_plays_1DJ <- reactive({
+    req(input$artist_selection_1DJ)
+    withProgress(message = "Processing...", {
+      get_artist_plays(input$artist_selection_1DJ, input$artist_years_range_1DJ)
     })
-    return(ret_val)
-  }
+  })
 
   output$artist_history_plot_1DJ <- renderPlot(
     {
-      artist_history <- process_artists_1DJ()
-      # artist_history <- play_count_by_DJ("Don Felder")
+      artist_history <- artist_quarterly_by_dj(
+        artist_plays_1DJ(),
+        threshold = as.numeric(input$artist_all_other_1DJ),
+        exclude_wake = input$exclude_wake_artists
+      )
 
       gg <- artist_history |>
         ggplot(aes(AirDate, Spins, fill = ShowName)) +
-        geom_col(orientation = "x")
-      scale_x_yearqtr(format = "%Y", guide = guide_axis(check.overlap = TRUE))
+        geom_col(orientation = "x") +
+        scale_x_yearqtr(format = "%Y", guide = guide_axis(check.overlap = TRUE))
       gg <- gg +
         labs(
           title = paste(
@@ -1210,35 +1145,13 @@ server <- function(input, output, session) {
     bg = "black"
   )
   output$top_songs_for_artist_1DJ <- renderTable({
-    top_songs_for_artist(
-      input$artist_selection_1DJ,
-      input$artist_years_range_1DJ,
-      input$exclude_wake_artists
-    )
+    artist_top_songs(artist_plays_1DJ(), input$exclude_wake_artists)
   })
   output$artist_variants <- renderTable({
-    playlists |>
-      filter(ArtistToken %in% input$artist_selection_1DJ) |>
-      select(Artist) |>
-      distinct()
+    req(input$artist_selection_1DJ)
+    get_artist_variants(input$artist_selection_1DJ)
   })
   #---------------------- multi artist tab -----------------------
-  reactive_multi_artists <- reactive({
-    input$exclude_wake_artists_multi
-    input$artist_selection_multi
-    input$artist_years_range_multi
-    isolate({
-      withProgress({
-        setProgress(message = "Processing...")
-        ret_val <- play_count_by_artist(
-          input$artist_selection_multi,
-          input$artist_years_range_multi,
-          exclude_wake = input$exclude_wake_artists_multi
-        )
-      })
-    })
-    return(ret_val)
-  })
   updateSelectizeInput(
     session = session,
     inputId = "artist_selection_multi",
@@ -1247,20 +1160,23 @@ server <- function(input, output, session) {
     selected = default_artist_multi
   )
 
-  output$artist_variants_multi <- renderTable({
-    playlists |>
-      filter(ArtistToken %in% input$artist_selection_multi) |>
-      select(Artist) |>
-      distinct()
+  artist_plays_multi <- reactive({
+    req(input$artist_selection_multi)
+    withProgress(message = "Processing...", {
+      get_artist_plays(input$artist_selection_multi, input$artist_years_range_multi)
+    })
+  })
+  reactive_multi_artists <- reactive({
+    artist_yearly(artist_plays_multi(), input$exclude_wake_artists_multi)
   })
 
-  output$debug_multi <- renderPrint({
-    input$artist_selection_multi
+  output$artist_variants_multi <- renderTable({
+    req(input$artist_selection_multi)
+    get_artist_variants(input$artist_selection_multi)
   })
 
   output$multi_artist_history_plot <- renderPlot(
     {
-      bg = "black"
       multi_artist_history <- reactive_multi_artists()
       gg <- multi_artist_history |>
         ggplot(aes(x = AirDate, y = Spins, fill = ArtistToken)) +
@@ -1295,25 +1211,6 @@ server <- function(input, output, session) {
         )
       gg <- gg + scale_x_continuous()
       gg <- gg + theme(legend.position = "top")
-      gg
-    },
-    bg = "black"
-  )
-
-  output$multi_artist_history_plot_3 <- renderPlot(
-    {
-      multi_artist_history <- reactive_multi_artists()
-      gg <- multi_artist_history |>
-        ggplot(aes(x = AirDate, y = Spins, fill = ArtistToken)) +
-        geom_col(position = 'dodge', width = 0.4)
-      gg <- gg +
-        labs(title = paste("Annual Plays by Artist"), caption = HOST_URL)
-      #gg<- gg+ theme_economist()
-      gg <- gg +
-        theme_solarized_2(light = FALSE) +
-        scale_colour_solarized("red")
-      gg <- gg + theme(plot.background = element_rect(fill = "black"))
-      gg <- gg + scale_x_continuous()
       gg
     },
     bg = "black"
