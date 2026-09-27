@@ -1,0 +1,11 @@
+{
+  "permission": {
+    "executeCode": {
+      "*": "allow"
+    },
+    "bash": {
+      "curl *": "allow",
+      "sed *": "allow"
+    }
+  }
+}

@@ -7,10 +7,7 @@ options(shiny.autoreload = FALSE)
 options("dplyr.summarise.inform" = FALSE)
 options(duckdb.materialize_message = FALSE)
 library(dplyr)
-library(tidyr)
-library(jsonlite)
 library(htmltools)
-library(rvest)
 library(shiny)
 library(shinycssloaders)
 library(shinythemes)
@@ -25,10 +22,15 @@ library(zoo)
 library(ggthemes)
 library(tm)
 library(duckplyr)
-library(gt)
 library(DT)
-library(bslib)
 methods_overwrite()
+
+# Production host is a 2 GB t3.small shared by R, DuckDB and Shiny Server.
+# DuckDB's default memory_limit is 80% of RAM, which would starve R; cap it
+# and let large aggregates spill to disk instead of failing.
+db_exec("SET memory_limit = '600MB'")
+db_exec("SET threads = 2")
+db_exec(paste0("SET temp_directory = '", file.path(tempdir(), "duckdb_spill"), "'"))
 
 # set info to true for debugging
 # fallback_config(info = FALSE, logging = FALSE)
@@ -79,16 +81,80 @@ ytd <- function(years_range) {
 
 djKey <- select(playlists, DJ) |>
   distinct() |>
-  left_join(djKey) |>
+  left_join(djKey, by = "DJ") |>
   # remove NA Channel DJs
-  filter(!is.na(ShowName))
+  filter(!is.na(ShowName)) |>
+  # materialize once; djKey is small and looked up in nearly every output
+  collect()
 
-channel_names <- djKey |>
-  select(Channel) |>
-  distinct() |>
-  pull(Channel)
+# fast ShowName -> DJ code lookup, avoids a DuckDB round trip per lookup
+show_to_dj <- setNames(djKey$DJ, djKey$ShowName)
+
+channel_names <- unique(djKey$Channel)
 
 all_artisttokens <- distinct(select(playlists, ArtistToken)) |> pull()
+
+# ----------------- STATION TAB QUERIES ----------------------
+# Defined at global scope so the memoise cache is shared across sessions.
+# Inputs form a small discrete set (channel x 2 x 2 x year pairs) and each
+# result is ~125 rows, so the cache stays tiny; bound it anyway.
+station_dj_codes <- function(channel = "ALL", exclude_wake = FALSE, exclude_bots = TRUE) {
+  codes <- if (channel == "ALL") djKey$DJ else djKey$DJ[djKey$Channel == channel]
+  if (exclude_wake) codes <- setdiff(codes, "WA")
+  if (exclude_bots) codes <- setdiff(codes, bot_shows)
+  codes
+}
+
+get_station_stats <- memoise(
+  function(
+    channel = "ALL",
+    exclude_wake = FALSE,
+    exclude_bots = TRUE,
+    years_range = c(2010, 2023)
+  ) {
+    # duckplyr needs plain scalars in filter expressions (no `x[1]` indexing)
+    yr <- ytd(years_range)
+    y1 <- yr[1]
+    y2 <- yr[2]
+    dj_codes <- station_dj_codes(channel, exclude_wake, exclude_bots)
+
+    # one filtered base relation shared by both aggregates; semi_join because
+    # duckplyr won't translate `%in%` against a long vector
+    base <- playlists |>
+      select(DJ, AirDate, ArtistToken, Title) |>
+      filter(AirDate >= y1, AirDate <= y2) |>
+      semi_join(tibble(DJ = dj_codes), by = "DJ")
+
+    artists <- base |>
+      filter(ArtistToken != "", ArtistToken != "Unknown") |>
+      summarize(.by = ArtistToken, play_count = n()) |>
+      arrange(desc(play_count)) |>
+      head(100) |>
+      collect()
+
+    songs_agg <- base |>
+      filter(Title != "", Title != "Unknown") |>
+      summarize(.by = c(ArtistToken, Title), play_count = n())
+
+    list(
+      artists = artists,
+      songs = songs_agg |> arrange(desc(play_count)) |> head(25) |> collect(),
+      # number of distinct artist/title pairs (kept lazy; never collect all songs)
+      count = songs_agg |> summarize(n = n()) |> pull(n)
+    )
+  },
+  cache = cachem::cache_mem(max_size = 20 * 1024^2, max_age = 24 * 3600)
+)
+
+# prime the cache with the Station tab's default view so the first visitor
+# doesn't wait for it
+station_defaults <- list(
+  channel = "ALL",
+  exclude_wake = FALSE,
+  exclude_bots = TRUE,
+  years_range = c(max_year - 3, max_year)
+)
+do.call(get_station_stats, station_defaults)
 
 #  DEFINE USER INTERFACE ===============================================================
 ui <- {
@@ -143,7 +209,14 @@ ui <- {
             ),
             textOutput("play_count"),
             h2(),
-            actionButton("update", "Update View")
+            actionButton("update", "Update View"),
+            hr(),
+            helpText(
+              "NOTE: The Channel Selector filters for DJs currently on that channel. ",
+              "This will include all the DJ's shows in the selected date range, even if ",
+              "their show used to be on a different channel or if their current channel ",
+              "did not exist during the selected date range."
+            )
           ),
           # ---------- Main panel for displaying outputs ----
           mainPanel(
@@ -536,111 +609,15 @@ ui <- {
 # DEFINE SERVER ===============================================================
 server <- function(input, output, session) {
   # QUERY FUNCTIONS --------------------------------------------------------------
-  # -------------- FUNCTIONS FOR STATION TAB -----------------------------
-
-  get_top_artists <- function(
-    channel = "ALL",
-    exclude_wake = FALSE,
-    exclude_bots = TRUE,
-    years_range = c(2010, 2023)
-  ) {
-    years_range <- ytd(years_range)
-    y1 <- years_range[1]
-    y2 <- years_range[2]
-    if (channel == 'ALL') {
-      DJ_set <- djKey
-    } else {
-      DJ_set <- djKey |>
-        filter(Channel == channel)
-    }
-    if (exclude_wake) {
-      DJ_set <- DJ_set |>
-        filter(DJ != "WA")
-    }
-    if (exclude_bots) {
-      DJ_set <- DJ_set |>
-        filter(!(DJ %in% bot_shows))
-    }
-
-    top_artists <- DJ_set |>
-      left_join(playlists, by = 'DJ') |>
-      filter(ArtistToken != "Unknown") |>
-      filter(ArtistToken != "") |>
-      filter(AirDate >= y1) |>
-      filter(AirDate <= y2) |>
-      summarize(.by = ArtistToken, play_count = n()) |>
-      arrange(desc(play_count)) |>
-      head(100)
-    return(top_artists)
-  }
-
-  get_top_songs <- function(
-    channel = 'ALL',
-    exclude_wake = FALSE,
-    exclude_bots = TRUE,
-    years_range = c(1980, 2030)
-  ) {
-    years_range <- ytd(years_range)
-    y1 <- years_range[1]
-    y2 <- years_range[2]
-    if (channel == 'ALL') {
-      DJ_set <- djKey |>
-        select(DJ)
-    } else {
-      DJ_set <- djKey |>
-        filter(Channel == channel) |> #on Sched or off?
-        select(DJ)
-    }
-    if (exclude_wake) {
-      DJ_set <- DJ_set |>
-        filter(DJ != "WA")
-    }
-    if (exclude_bots) {
-      DJ_set <- DJ_set |>
-        filter(!(DJ %in% bot_shows))
-    }
-    songs <- DJ_set |>
-      left_join(playlists, by = 'DJ') |>
-      filter(AirDate >= y1) |>
-      filter(AirDate <= y2) |>
-      filter(Title != "") |>
-      filter(Title != "Unknown") |>
-      summarize(.by = c(ArtistToken, Title), play_count = n()) |>
-      arrange(desc(play_count))
-
-    top_songs <- list(
-      count = pull(summarise(songs, n())),
-      songs = head(songs, 25)
-    )
-    return(top_songs)
-  }
-
-  # Note that we use eventReactive() here, which depends on
-  # input$update (the action button), so that the output is only
-  # updated when the user clicks the button
-  top_artists_reactive <- eventReactive(
+  # -------------- STATION TAB -----------------------------
+  # Query functions live at global scope (get_station_stats) so their memoise
+  # cache is shared across sessions. eventReactive() depends on input$update
+  # (the action button) so the view only refreshes when the user clicks it.
+  station_reactive <- eventReactive(
     input$update,
     {
-      withProgress({
-        setProgress(message = "Processing Artists...")
-        ret_val <- get_top_artists(
-          input$channel,
-          input$exclude_wake,
-          input$exclude_bots,
-          input$years_range_1
-        )
-      })
-      return(ret_val)
-    },
-    ignoreNULL = FALSE
-  )
-
-  top_songs_reactive <- eventReactive(
-    input$update,
-    {
-      withProgress({
-        setProgress(message = "Processing Songs...")
-        get_top_songs(
+      withProgress(message = "Processing...", {
+        get_station_stats(
           input$channel,
           input$exclude_wake,
           input$exclude_bots,
@@ -650,10 +627,6 @@ server <- function(input, output, session) {
     },
     ignoreNULL = FALSE
   )
-
-  output$test <- renderText({
-    paste("test")
-  })
 
   # -------------- FUNCTIONS FOR DJS TAB -----------------------------
 
@@ -948,9 +921,8 @@ server <- function(input, output, session) {
   # OUTPUT SECTON --------------------------------------------------------------
   # ------------------- station tab ----------------
   output$cloud <- renderWordcloud2({
-    top_artists <- top_artists_reactive()
     wordcloud2a(
-      top_artists,
+      station_reactive()$artists,
       size = 0.3,
       backgroundColor = "black",
       color = 'random-light',
@@ -959,16 +931,13 @@ server <- function(input, output, session) {
   })
 
   output$table_artists <- renderTable({
-    head(top_artists_reactive(), 25)
+    head(station_reactive()$artists, 25)
   })
   output$table_songs <- renderTable({
-    top_songs_reactive()$songs
+    station_reactive()$songs
   })
   output$play_count <- renderText({
-    paste("Songs Played: ", format(top_songs_reactive()$count, big.mark = ","))
-  })
-  output$play_count_2 <- renderText({
-    paste("Songs Played: ")
+    paste("Songs Played: ", format(station_reactive()$count, big.mark = ","))
   })
   output$date_span <- renderText({
     paste("Updated through", max_date)
