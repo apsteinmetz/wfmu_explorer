@@ -70,7 +70,19 @@ This site is powered by Shiny by Posit (<https://www.posit.co/>) and written in 
 #### More about me: [artsteinmetz.com](https://artsteinmetz.com)
 
 ## Change log
-\* Changes in 2.0 Performance overhaul, tuned for the small server this app runs on (2 GB of memory shared by every visitor). Every tab was reworked so that each change you make triggers a single pass over the 3.9-million-row playlist file instead of two to four, and results are now cached and shared across all visitors, so a view someone else has already looked at comes back instantly. Controls that only reshape a result (play-count threshold, "Exclude Wake 'n' Bake") no longer touch the database at all. The **Songs** tab lost its clunky two-step "clue" search: just start typing a title and matching songs appear as you type, most-played first, with play counts. The **Playlists** tab now lists songs in the order they were played within a show and defaults to the selected DJ's most recent month. The "Compare Two DJs" songs-in-common table now measures both DJs the same way (by artist and title). Smaller fixes: the single-artist and song history plots now label the x-axis by year as intended; the DJ similarity histogram was restyled to match the app's theme; the Station tab notes that the channel filter is based on a DJ's *current* channel. Under the hood: memory limits on the database engine, unused packages dropped, dead code removed, and a couple of latent bugs squashed.  Burned 314k tokens and $30 in Claude Fable to do the refresh.
+\* Changes in 2.0 Performance overhaul, tuned for the small server this app runs on (2 GB of memory shared by every visitor).
+
+- Every tab was reworked so that each change you make triggers a single pass over the 3.9-million-row playlist file instead of two to four.
+- Results are now cached and shared across all visitors, so a view someone else has already looked at comes back instantly.
+- Controls that only reshape a result (play-count threshold, "Exclude Wake 'n' Bake") no longer touch the database at all.
+- The Station channel filter now counts only plays from dates when the channel existed, and notes that it is based on a DJ's *current* channel.
+- The **Songs** tab lost its clunky two-step "clue" search: just start typing a title and matching songs appear as you type, most-played first, with play counts.
+- The **Playlists** tab now lists songs in the order they were played within a show and defaults to the selected DJ's most recent month.
+- The "Compare Two DJs" songs-in-common table now measures both DJs the same way (by artist and title).
+- The single-artist and song history plots now label the x-axis by year as intended.
+- The DJ similarity histogram was restyled to match the app's theme.
+- Under the hood: memory limits on the database engine, unused packages dropped, dead code removed, and a couple of latent bugs squashed.
+- Burned 314k tokens and $30 in Claude Fable to do the refresh.
 
 \* Changes in 1.1 Added option to exclude robot DJs and select by stream channel.  More playlist formats added to data set.  "Let's Encrypt" certificate added to ensure secure https connection.  Hopefully this will prevent browsers from blocking the app as "not secure."  Playlists file is getting pretty big - over 3 million rows - swtiched to Github LFS to handle it. Ensured all functions stay in duckdb.
 \*Out of Beta! Changes in 1.0 Links back to WFMU for station, DJ profile page, and DJ archived shows.  Added option to exclude "Wake 'n' Bake" since daily frequency of show distorts picture.

@@ -64,6 +64,17 @@ default_song <- "Help"
 default_artist <- 'Abba'
 default_artist_multi <- c('Abba', 'Beatles')
 bot_shows <- c("NO", "RQ", "SR") # show with bot DJs
+# plays before a channel existed are excluded when that channel is selected
+# on the Station tab. Known channels are listed explicitly; any channel that
+# later appears in djKey is added below with a start date of today - 90 days.
+channel_start_dates <- tibble(
+  channel = c("WFMU", "Archive", "Give the Drummer", "Rock & Soul", "Sheena's Jungle Room"),
+  start_date = as.Date(c("1970-01-01", "1970-01-01", "2010-01-01", "2010-01-01", "2022-01-01"))
+)
+channel_start <- function(channel) {
+  d <- channel_start_dates$start_date[channel_start_dates$channel == channel]
+  if (length(d) == 0) as.Date("1970-01-01") else d[1]
+}
 
 max_date <- summarize(playlists, max(AirDate)) |> pull()
 min_date <- summarize(playlists, min(AirDate)) |> pull()
@@ -91,7 +102,19 @@ djKey <- select(playlists, DJ) |>
 # fast ShowName -> DJ code lookup, avoids a DuckDB round trip per lookup
 show_to_dj <- setNames(djKey$DJ, djKey$ShowName)
 
-channel_names <- unique(djKey$Channel)
+channel_names <- unique(na.omit(djKey$Channel))
+
+# reconcile channel_start_dates with the channels actually present: new
+# channels get a recent start date; channels that have vanished are kept
+new_channels <- setdiff(channel_names, channel_start_dates$channel)
+if (length(new_channels) > 0) {
+  message("New channel(s) in djKey, assuming start ", Sys.Date() - 90, ": ",
+          paste(new_channels, collapse = ", "))
+  channel_start_dates <- bind_rows(
+    channel_start_dates,
+    tibble(channel = new_channels, start_date = Sys.Date() - 90)
+  )
+}
 
 all_artisttokens <- distinct(select(playlists, ArtistToken)) |> pull()
 
@@ -117,6 +140,11 @@ get_station_stats <- memoise(
     yr <- ytd(years_range)
     y1 <- yr[1]
     y2 <- yr[2]
+    # a channel's DJs may have earlier shows on other channels; don't count
+    # plays from before the selected channel existed
+    if (channel != "ALL") {
+      y1 <- max(y1, channel_start(channel))
+    }
     dj_codes <- station_dj_codes(channel, exclude_wake, exclude_bots)
 
     # one filtered base relation shared by both aggregates; semi_join because
@@ -475,7 +503,11 @@ default_show <- "Ken"
 default_show_last <- djKey$LastShow[djKey$ShowName == default_show][1]
 
 #  DEFINE USER INTERFACE ===============================================================
-ui <- {
+# Built by a function so it can be regenerated: bslib assigns each tabset a
+# random 4-digit id and two tabsets occasionally collide, which makes one
+# tabset's links activate the other's panes (e.g. Artists menu toggling the
+# Station word cloud/table). See ui <- build_unique_ui() below.
+build_ui <- function() {
   navbarPage(
     "WFMU Playlist Explorer",
     theme = shinytheme("darkly"),
@@ -530,10 +562,10 @@ ui <- {
             actionButton("update", "Update View"),
             hr(),
             helpText(
-              "NOTE: The Channel Selector filters for DJs currently on that channel. ",
-              "This will include all the DJ's shows in the selected date range, even if ",
-              "their show used to be on a different channel or if their current channel ",
-              "did not exist during the selected date range."
+              "NOTE: The Channel Selector filters for DJs currently on that channel ",
+              "and only counts plays from after that channel started. ",
+              "Within that window it includes all the DJ's shows, even if their show ",
+              "used to be on a different channel."
             )
           ),
           # ---------- Main panel for displaying outputs ----
@@ -565,6 +597,7 @@ ui <- {
               choices = sort(djKey$ShowName),
               selected = "Ken"
             ),
+            textOutput("dj_current_channel"),
             hr(),
             # diplay a clickable url
             uiOutput("dj_profile_link"),
@@ -617,6 +650,11 @@ ui <- {
               "Show Name:",
               choices = sort(djKey$ShowName),
               selected = "Ken"
+            ),
+            hr(),
+            helpText(
+              "NOTE: Channel is the DJ's current channel. ShowCount is all ",
+              "their shows from any channel they have appeared on."
             )
           ),
 
@@ -924,6 +962,25 @@ ui <- {
     )
   ) # end UI
 }
+
+# pane element ids ("tab-<tabset>-<n>") must be unique in the document; a
+# duplicate means two tabsets drew the same random id
+tab_pane_ids <- function(ui) {
+  html <- as.character(ui)
+  regmatches(html, gregexpr('(?<=id=")tab-[0-9]+-[0-9]+', html, perl = TRUE))[[1]]
+}
+
+build_unique_ui <- function(max_tries = 20) {
+  for (i in seq_len(max_tries)) {
+    ui <- build_ui()
+    if (!anyDuplicated(tab_pane_ids(ui))) {
+      return(ui)
+    }
+  }
+  stop("Could not build a UI with unique tabset ids")
+}
+
+ui <- build_unique_ui()
 # DEFINE SERVER ===============================================================
 server <- function(input, output, session) {
   # QUERY FUNCTIONS --------------------------------------------------------------
@@ -1011,6 +1068,10 @@ server <- function(input, output, session) {
     withProgress(message = "Processing...", {
       get_dj_stats(dj_profile()$DJ, dj_years())
     })
+  })
+
+  output$dj_current_channel <- renderText({
+    paste("Current Channel:", dj_profile()$Channel)
   })
 
   output$dj_profile_link <- renderUI({
