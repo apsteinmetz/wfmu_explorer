@@ -7,6 +7,55 @@ options(shiny.autoreload = FALSE)
 options("dplyr.summarise.inform" = FALSE)
 options(duckdb.materialize_message = FALSE)
 options(duckdb.progress_display = FALSE) # keep server logs readable
+
+# ----------------- PERSISTENT CACHE ----------------------
+# Derived artifacts (song search index, histogram bins, memoised query
+# results) are persisted on disk so restarts don't redo the work. The cache
+# directory name is keyed by the newest data-file mtime plus a code-version
+# salt, so a rescrape (or bumping CACHE_VERSION after changing query
+# semantics) automatically abandons the old cache. Location: $WFMU_CACHE_DIR
+# if set, else the user cache dir (the app dir is root-owned on the server
+# and the app runs as user `shiny`), else a session temp dir.
+CACHE_VERSION <- "2.0"
+
+resolve_cache_base <- function() {
+  candidates <- c(
+    Sys.getenv("WFMU_CACHE_DIR", unset = NA),
+    tools::R_user_dir("wfmu_explorer", "cache"),
+    file.path(tempdir(), "wfmu_explorer_cache")
+  )
+  for (d in candidates[!is.na(candidates) & nzchar(candidates)]) {
+    ok <- dir.exists(d) || dir.create(d, recursive = TRUE, showWarnings = FALSE)
+    if (ok && file.access(d, mode = 2) == 0) return(d)
+  }
+  stop("No writable cache directory found")
+}
+
+cache_base <- resolve_cache_base()
+data_stamp <- format(
+  max(file.mtime(list.files("data", full.names = TRUE))),
+  "%Y%m%d%H%M%S"
+)
+cache_root <- file.path(cache_base, paste0("v", CACHE_VERSION, "_", data_stamp))
+dir.create(cache_root, recursive = TRUE, showWarnings = FALSE)
+# drop caches from earlier data/code versions
+for (d in setdiff(list.files(cache_base, pattern = "^v", full.names = TRUE), cache_root)) {
+  unlink(d, recursive = TRUE)
+}
+message("Cache dir: ", cache_root)
+
+# persistent memoise cache under cache_root (results survive restarts)
+disk_cache <- function(name, max_size, max_age = 24 * 3600) {
+  cachem::cache_disk(
+    dir = file.path(cache_root, paste0("memo_", name)),
+    max_size = max_size,
+    max_age = max_age
+  )
+}
+
+# DuckDB extensions persist here instead of being re-downloaded per session
+options(duckdb.extension_directory = file.path(cache_base, "duckdb_extensions"))
+
 library(dplyr)
 library(htmltools)
 library(shiny)
@@ -37,7 +86,21 @@ db_exec(paste0("SET temp_directory = '", file.path(tempdir(), "duckdb_spill"), "
 # fallback_config(info = FALSE, logging = FALSE)
 
 load('data/djdtm.rdata') # document term object for similarity
-load('data/similarity_histogram_gg.rdata') # precomputed histogram ggplot object "gg_sim"
+
+# Only the 30 histogram bins and labels are needed from the 6 MB precomputed
+# ggplot "gg_sim"; extract once and cache them so later starts skip the load().
+sim_hist_file <- file.path(cache_root, "sim_hist_bins.rds")
+if (file.exists(sim_hist_file)) {
+  sim_hist <- readRDS(sim_hist_file)
+} else {
+  load('data/similarity_histogram_gg.rdata')
+  sim_hist <- list(
+    bars = ggplot2::layer_data(gg_sim, 1),
+    labels = gg_sim$labels[c("x", "y", "title")]
+  )
+  saveRDS(sim_hist, sim_hist_file)
+  rm(gg_sim)
+}
 playlists <- read_file_duckdb('data/playlists.parquet', "read_parquet")
 
 djKey <- read_file_duckdb('data/djKey.parquet', "read_parquet") |>
@@ -172,7 +235,7 @@ get_station_stats <- memoise(
       count = songs_agg |> summarize(n = n()) |> pull(n)
     )
   },
-  cache = cachem::cache_mem(max_size = 20 * 1024^2, max_age = 24 * 3600)
+  cache = disk_cache("station", max_size = 20 * 1024^2)
 )
 
 # prime the cache with the Station tab's default view so the first visitor
@@ -208,7 +271,7 @@ get_dj_stats <- memoise(
         collect()
     )
   },
-  cache = cachem::cache_mem(max_size = 30 * 1024^2, max_age = 24 * 3600)
+  cache = disk_cache("dj_stats", max_size = 30 * 1024^2)
 )
 
 get_similar_DJs <- memoise(
@@ -227,7 +290,7 @@ get_similar_DJs <- memoise(
       select(ShowName, DJ, Channel, showCount, Similarity) |>
       mutate(Similarity = Similarity * 100)
   },
-  cache = cachem::cache_mem(max_size = 10 * 1024^2, max_age = 24 * 3600)
+  cache = disk_cache("similar_djs", max_size = 10 * 1024^2)
 )
 
 get_sim_index <- memoise(
@@ -236,7 +299,7 @@ get_sim_index <- memoise(
       filter(DJ1 == dj1, DJ2 == dj2) |>
       pull(Similarity)
   },
-  cache = cachem::cache_mem(max_size = 5 * 1024^2, max_age = 24 * 3600)
+  cache = disk_cache("sim_index", max_size = 5 * 1024^2)
 )
 
 # Compare Two DJs: a single DuckDB pass over both DJs' plays, then derive the
@@ -278,13 +341,13 @@ compare_djs <- memoise(
       songs = in_common(c("ArtistToken", "Title"))
     )
   },
-  cache = cachem::cache_mem(max_size = 10 * 1024^2, max_age = 24 * 3600)
+  cache = disk_cache("compare_djs", max_size = 10 * 1024^2)
 )
 
 # Lightweight version of the precomputed similarity histogram: keep the
 # binned bars, drop the ~230k raw pair similarities so each render is cheap.
 gg_sim_light <- local({
-  bars <- ggplot2::layer_data(gg_sim, 1)
+  bars <- sim_hist$bars
   # original maps y = after_stat(count) + 1 on a log10 scale
   # styled to match the app's other plots (solarized dark on black)
   ggplot(bars, aes(x = x, y = count + 1)) +
@@ -309,7 +372,7 @@ gg_sim_light <- local({
       colour = "#93a1a1", linewidth = 1,
       arrow = arrow(length = unit(0.25, "cm"), type = "closed")
     ) +
-    labs(x = gg_sim$labels$x, y = gg_sim$labels$y, title = gg_sim$labels$title) +
+    labs(x = sim_hist$labels$x, y = sim_hist$labels$y, title = sim_hist$labels$title) +
     # base_size 14 = default 12 + 2 pt for all text elements
     theme_solarized_2(light = FALSE, base_size = 14) +
     theme(plot.background = element_rect(fill = "black"))
@@ -337,7 +400,7 @@ get_artist_plays <- memoise(
       summarise(.by = c(AirDate, DJ, ArtistToken, Title), n = n()) |>
       collect()
   },
-  cache = cachem::cache_mem(max_size = 50 * 1024^2, max_age = 24 * 3600)
+  cache = disk_cache("artist_plays", max_size = 50 * 1024^2)
 )
 
 get_artist_variants <- memoise(
@@ -348,7 +411,7 @@ get_artist_variants <- memoise(
       arrange(Artist) |>
       collect()
   },
-  cache = cachem::cache_mem(max_size = 10 * 1024^2, max_age = 24 * 3600)
+  cache = disk_cache("artist_variants", max_size = 10 * 1024^2)
 )
 
 # Pure-R rollups of get_artist_plays() output (plain tibbles, no DuckDB).
@@ -387,14 +450,24 @@ artist_yearly <- function(plays, exclude_wake = FALSE) {
 
 # ----------------- SONG TAB QUERIES ----------------------
 # Type-ahead search index: one row per distinct title with its play count.
-# Lives in DuckDB memory (~26 MB), not in R; built once at startup (~1 s).
-db_exec(
-  "CREATE OR REPLACE TABLE song_index AS
-   SELECT Title, lower(Title) AS title_lc, count(*)::INTEGER AS n
-   FROM read_parquet('data/playlists.parquet')
-   WHERE Title <> '' AND Title <> 'Unknown'
-   GROUP BY Title"
-)
+# Lives in DuckDB memory (~26 MB), not in R. Building it from the playlist
+# file takes ~1 s, so the result is cached as parquet and reloaded from there.
+song_index_file <- file.path(cache_root, "song_index.parquet")
+if (!file.exists(song_index_file)) {
+  db_exec(sprintf(
+    "COPY (
+       SELECT Title, lower(Title) AS title_lc, count(*)::INTEGER AS n
+       FROM read_parquet('data/playlists.parquet')
+       WHERE Title <> '' AND Title <> 'Unknown'
+       GROUP BY Title
+     ) TO '%s' (FORMAT PARQUET)",
+    gsub("\\\\", "/", song_index_file)
+  ))
+}
+db_exec(sprintf(
+  "CREATE OR REPLACE TABLE song_index AS SELECT * FROM read_parquet('%s')",
+  gsub("\\\\", "/", song_index_file)
+))
 
 song_search_min_chars <- 2
 
@@ -469,7 +542,7 @@ get_song_plays <- memoise(
       summarise(.by = c(AirDate, DJ, ArtistToken), n = n()) |>
       collect()
   },
-  cache = cachem::cache_mem(max_size = 50 * 1024^2, max_age = 24 * 3600)
+  cache = disk_cache("song_plays", max_size = 50 * 1024^2)
 )
 
 song_top_artists <- function(plays) {
@@ -496,7 +569,7 @@ get_playlist <- memoise(
       collect()
   },
   # full histories can be tens of MB; keep only a few around, briefly
-  cache = cachem::cache_mem(max_size = 40 * 1024^2, max_age = 6 * 3600)
+  cache = disk_cache("playlist", max_size = 40 * 1024^2, max_age = 6 * 3600)
 )
 
 default_show <- "Ken"

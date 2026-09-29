@@ -7,3 +7,4 @@ rsconnect
 *.csv
 test_bs
 about_files/*
+cache/
