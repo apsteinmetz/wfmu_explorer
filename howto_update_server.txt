@@ -1,4 +1,4 @@
-HOW TO UPDATE / DEPLOY THE WFMU EXPLORER (v2.0)
+HOW TO UPDATE / DEPLOY THE WFMU EXPLORER (v2.1)
 ================================================
 
 Server: AWS t3.small (2 vCPU, 2 GB RAM), Ubuntu, open-source Shiny Server.
@@ -11,12 +11,24 @@ ROUTINE UPDATE (code and/or data)
 Locally: make sure playlists.parquet, djKey.parquet, djsimilarity.parquet,
 distinctive_artists.parquet, djdtm.rdata and similarity_histogram_gg.rdata are
 up to date, then git push.
+As of v2.1, playlists.parquet must include the boolean column `Signature`
+(TRUE = signature song). Keep signature songs IN the file and flag them; the
+app drops them by default and lets users toggle them back in. The app will
+fail to start if the column is missing.
 
 On the instance:
   cd /srv/shiny-server
   sudo git pull
   sudo systemctl restart shiny-server
   sudo ss -plut | grep -i shiny        # confirm it's listening
+  curl -s -o /dev/null -w '%{http_code}\n' http://localhost:3838/   # expect 200
+
+Or do it all from Windows without opening PuTTY (uses the saved "shinywfmu"
+session):
+  plink -batch -load shinywfmu "cd /srv/shiny-server && sudo git pull && sudo systemctl restart shiny-server && sudo ss -plut | grep -i shiny"
+  If plink says the host key is not cached, open the session in PuTTY once and
+  accept the key (check the fingerprint against ~/.ssh/known_hosts with
+  ssh-keygen -F <server ip> -l).
 
 Notes:
 * The app keeps a persistent cache (song search index, histogram bins, memoised
@@ -24,7 +36,8 @@ Notes:
   that changes any data file makes the app rebuild the cache on its next start
   (adds ~2 s once); old cache directories are deleted automatically.
 * If you change how a query WORKS (not just the data), bump CACHE_VERSION in
-  app.R so stale cached results are discarded.
+  app.R so stale cached results are discarded. (v2.1 bumped it to "2.1" for
+  the signature song toggles.)
 * First start after a reboot is slow (10-20 s) while package files come off
   disk; later starts are ~2-3 s.
 
@@ -59,7 +72,9 @@ ONE-TIME SERVER SETUP FOR v2.0
    Memory: the resident process is ~500-700 MB; fine on 2 GB with this single app.
 
 4) Verify:
-  grep "Cache dir" /var/log/shiny-server/*.log     # expect /var/cache/wfmu_explorer/v2.0_<stamp>
+  grep "Cache dir" /var/log/shiny-server/*.log     # expect /var/cache/wfmu_explorer/v2.1_<stamp>
+   (If it shows /home/shiny/.cache/R/wfmu_explorer/..., step 2 was skipped;
+   that location works too. As of Oct 2026 the server uses this fallback.)
   sudo less "$(ls -t /var/log/shiny-server/*.log | head -n 1)"   # most recent startup log
 
 
@@ -84,7 +99,7 @@ SYSTEM PACKAGES YOU MAY NEED
   sudo apt-get install gfortran gcc g++ make libblas-dev liblapack-dev zlib1g-dev
 
 
-R PACKAGES REQUIRED (v2.0)
+R PACKAGES REQUIRED (v2.1, unchanged from v2.0)
 --------------------------
 Install as root so they land in the site library:
   sudo su - -c "R -e \"install.packages(c(
