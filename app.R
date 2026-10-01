@@ -16,7 +16,7 @@ options(duckdb.progress_display = FALSE) # keep server logs readable
 # semantics) automatically abandons the old cache. Location: $WFMU_CACHE_DIR
 # if set, else the user cache dir (the app dir is root-owned on the server
 # and the app runs as user `shiny`), else a session temp dir.
-CACHE_VERSION <- "2.0"
+CACHE_VERSION <- "2.1"
 
 resolve_cache_base <- function() {
   candidates <- c(
@@ -197,7 +197,8 @@ get_station_stats <- memoise(
     channel = "ALL",
     exclude_wake = FALSE,
     exclude_bots = TRUE,
-    years_range = c(2010, 2023)
+    years_range = c(2010, 2023),
+    exclude_signature = TRUE
   ) {
     # duckplyr needs plain scalars in filter expressions (no `x[1]` indexing)
     yr <- ytd(years_range)
@@ -213,9 +214,10 @@ get_station_stats <- memoise(
     # one filtered base relation shared by both aggregates; semi_join because
     # duckplyr won't translate `%in%` against a long vector
     base <- playlists |>
-      select(DJ, AirDate, ArtistToken, Title) |>
+      select(DJ, AirDate, ArtistToken, Title, Signature) |>
       filter(AirDate >= y1, AirDate <= y2) |>
       semi_join(tibble(DJ = dj_codes), by = "DJ")
+    if (exclude_signature) base <- filter(base, !Signature)
 
     artists <- base |>
       filter(ArtistToken != "", ArtistToken != "Unknown") |>
@@ -244,20 +246,22 @@ station_defaults <- list(
   channel = "ALL",
   exclude_wake = FALSE,
   exclude_bots = TRUE,
-  years_range = c(max_year - 3, max_year)
+  years_range = c(max_year - 3, max_year),
+  exclude_signature = TRUE
 )
 invisible(do.call(get_station_stats, station_defaults))
 
 # ----------------- DJ TAB QUERIES ----------------------
 # DJ Profile: one filtered base relation feeds both aggregates
 get_dj_stats <- memoise(
-  function(dj = "TW", years_range = c(2017, 2019)) {
+  function(dj = "TW", years_range = c(2017, 2019), exclude_signature = TRUE) {
     yr <- ytd(years_range)
     y1 <- yr[1]
     y2 <- yr[2]
     base <- playlists |>
-      select(DJ, AirDate, ArtistToken, Title) |>
+      select(DJ, AirDate, ArtistToken, Title, Signature) |>
       filter(DJ == dj, AirDate >= y1, AirDate <= y2)
+    if (exclude_signature) base <- filter(base, !Signature)
     list(
       artists = base |>
         summarize(.by = ArtistToken, play_count = n()) |>
@@ -306,9 +310,11 @@ get_sim_index <- memoise(
 # artists-in-common and songs-in-common tables in R. `agg` is transient
 # (tens of thousands of rows); only the two 10-row results are cached.
 compare_djs <- memoise(
-  function(dj1 = "TW", dj2 = "CF") {
-    agg <- playlists |>
-      filter(DJ %in% c(dj1, dj2)) |>
+  function(dj1 = "TW", dj2 = "CF", exclude_signature = TRUE) {
+    base <- playlists |>
+      filter(DJ %in% c(dj1, dj2))
+    if (exclude_signature) base <- filter(base, !Signature)
+    agg <- base |>
       summarise(.by = c(DJ, ArtistToken, Title), n = n()) |>
       collect()
     totals <- agg |> summarise(.by = DJ, total = sum(n))
@@ -380,9 +386,10 @@ gg_sim_light <- local({
 
 # ----------------- ARTIST TAB QUERIES ----------------------
 # One DuckDB pass per (tokens, years), shared by Single and Multi Artist and
-# collapsed to (AirDate, DJ, ArtistToken, Title) counts. Threshold, Wake 'n'
-# Bake exclusion and the quarterly/yearly rollups are then cheap R steps on
-# the cached result, so toggling those controls never touches DuckDB.
+# collapsed to (AirDate, DJ, ArtistToken, Title, Signature) counts. Threshold,
+# Wake 'n' Bake / signature-song exclusion and the quarterly/yearly rollups are
+# then cheap R steps on the cached result, so toggling those controls never
+# touches DuckDB.
 get_artist_plays <- memoise(
   function(tokens, years_range) {
     yr <- ytd(years_range)
@@ -397,7 +404,7 @@ get_artist_plays <- memoise(
       base <- semi_join(base, tibble(ArtistToken = tokens), by = "ArtistToken")
     }
     base |>
-      summarise(.by = c(AirDate, DJ, ArtistToken, Title), n = n()) |>
+      summarise(.by = c(AirDate, DJ, ArtistToken, Title, Signature), n = n()) |>
       collect()
   },
   cache = disk_cache("artist_plays", max_size = 50 * 1024^2)
@@ -417,12 +424,15 @@ get_artist_variants <- memoise(
 # Pure-R rollups of get_artist_plays() output (plain tibbles, no DuckDB).
 # Date conversions are done with base R assignment so duckplyr never sees
 # as.yearqtr()/year() and no methods_restore() toggling is needed.
-drop_wake <- function(plays, exclude_wake) {
-  if (exclude_wake) plays[plays$DJ != "WA", ] else plays
+drop_plays <- function(plays, exclude_wake = FALSE, exclude_signature = TRUE) {
+  if (exclude_wake) plays <- plays[plays$DJ != "WA", ]
+  if (exclude_signature) plays <- plays[!plays$Signature, ]
+  plays
 }
 
-quarterly_by_dj <- function(plays, threshold = 3, exclude_wake = FALSE) {
-  plays <- drop_wake(plays, exclude_wake)
+quarterly_by_dj <- function(plays, threshold = 3, exclude_wake = FALSE,
+                            exclude_signature = TRUE) {
+  plays <- drop_plays(plays, exclude_wake, exclude_signature)
   plays$AirDate <- as.yearqtr(plays$AirDate)
   plays |>
     summarise(.by = c(AirDate, DJ), Spins = as.integer(sum(n))) |>
@@ -434,14 +444,14 @@ quarterly_by_dj <- function(plays, threshold = 3, exclude_wake = FALSE) {
     arrange(AirDate)
 }
 
-artist_top_songs <- function(plays, exclude_wake = FALSE) {
-  drop_wake(plays, exclude_wake) |>
+artist_top_songs <- function(plays, exclude_wake = FALSE, exclude_signature = TRUE) {
+  drop_plays(plays, exclude_wake, exclude_signature) |>
     summarise(.by = Title, count = as.integer(sum(n))) |>
     arrange(desc(count))
 }
 
-artist_yearly <- function(plays, exclude_wake = FALSE) {
-  plays <- drop_wake(plays, exclude_wake)
+artist_yearly <- function(plays, exclude_wake = FALSE, exclude_signature = TRUE) {
+  plays <- drop_plays(plays, exclude_wake, exclude_signature)
   plays$AirDate <- year(plays$AirDate)
   plays |>
     summarise(.by = c(AirDate, ArtistToken), Spins = as.integer(sum(n))) |>
@@ -539,14 +549,14 @@ get_song_plays <- memoise(
       base <- semi_join(base, tibble(Title = titles), by = "Title")
     }
     base |>
-      summarise(.by = c(AirDate, DJ, ArtistToken), n = n()) |>
+      summarise(.by = c(AirDate, DJ, ArtistToken, Signature), n = n()) |>
       collect()
   },
   cache = disk_cache("song_plays", max_size = 50 * 1024^2)
 )
 
-song_top_artists <- function(plays) {
-  plays |>
+song_top_artists <- function(plays, exclude_wake = FALSE, exclude_signature = TRUE) {
+  drop_plays(plays, exclude_wake, exclude_signature) |>
     summarise(.by = ArtistToken, count = as.integer(sum(n))) |>
     arrange(desc(count))
 }
@@ -558,7 +568,7 @@ song_top_artists <- function(plays) {
 get_playlist <- memoise(
   function(dj, d1, d2) {
     read_sql_duckdb(sprintf(
-      "SELECT AirDate, Artist, Title
+      "SELECT AirDate, Artist, Title, Signature
        FROM read_parquet('data/playlists.parquet', file_row_number = true)
        WHERE DJ = '%s' AND AirDate BETWEEN DATE '%s' AND DATE '%s'
        ORDER BY AirDate, file_row_number",
@@ -615,6 +625,11 @@ build_ui <- function() {
             checkboxInput(
               "exclude_bots",
               "Exclude Robot DJs?",
+              value = TRUE
+            ),
+            checkboxInput(
+              "exclude_signature",
+              "Exclude Signature Songs?",
               value = TRUE
             ),
             helpText(
@@ -678,6 +693,11 @@ build_ui <- function() {
             htmlOutput("other_show_names"),
             hr(),
             uiOutput("DJ_date_slider"),
+            checkboxInput(
+              "exclude_signature_dj",
+              "Exclude Signature Songs?",
+              value = TRUE
+            ),
             #, actionButton("DJ_update","Update")
             hr(),
             h4('Distinctive Artists'),
@@ -766,6 +786,16 @@ build_ui <- function() {
               choices = sort(djKey$ShowName),
               selected = 'Bob Brainen'
             )
+          ),
+          column(
+            4,
+            # spacer so the checkbox lines up with the select boxes
+            br(),
+            checkboxInput(
+              "exclude_signature_compare",
+              "Exclude Signature Songs?",
+              value = TRUE
+            )
           )
         ),
         fluidRow(
@@ -820,6 +850,11 @@ build_ui <- function() {
                 "Exclude Wake 'n' Bake?",
                 value = FALSE
               ),
+              checkboxInput(
+                "exclude_signature_artists",
+                "Exclude Signature Songs?",
+                value = TRUE
+              ),
               selectizeInput(
                 "artist_selection_1DJ",
                 label = NULL,
@@ -872,6 +907,11 @@ build_ui <- function() {
                 "exclude_wake_artists_multi",
                 "Exclude Wake 'n' Bake?",
                 value = FALSE
+              ),
+              checkboxInput(
+                "exclude_signature_artists_multi",
+                "Exclude Signature Songs?",
+                value = TRUE
               ),
               selectizeInput(
                 "artist_selection_multi",
@@ -964,6 +1004,11 @@ build_ui <- function() {
               "exclude_wake_songs",
               "Exclude Wake 'n' Bake?",
               value = FALSE
+            ),
+            checkboxInput(
+              "exclude_signature_songs",
+              "Exclude Signature Songs?",
+              value = TRUE
             )
           )
         ),
@@ -1008,11 +1053,17 @@ build_ui <- function() {
               "reset_playlist_date_range",
               "Reset Dates to Full History"
             ),
-            h4("Important Note:"),
-            h5("I have stripped out signature songs"),
-            h5("that a DJ might play every show"),
-            h5("as it distorts the overall popularity"),
-            h5("measures in the data set.")
+            h4("Signature Songs:"),
+            h5(
+              "Songs a DJ plays nearly every show (show openers, closers, ",
+              "theme songs) are flagged as signature songs. They are ",
+              "highlighted and marked with a \u2605 in the playlist."
+            ),
+            h5(
+              "Because they distort popularity measures, the other tabs ",
+              "exclude them by default. Untick \"Exclude Signature Songs?\" ",
+              "on those tabs to include them."
+            )
           )
         ),
 
@@ -1069,7 +1120,8 @@ server <- function(input, output, session) {
           input$channel,
           input$exclude_wake,
           input$exclude_bots,
-          input$years_range_1
+          input$years_range_1,
+          exclude_signature = input$exclude_signature
         )
       })
     },
@@ -1139,7 +1191,11 @@ server <- function(input, output, session) {
 
   dj_stats <- reactive({
     withProgress(message = "Processing...", {
-      get_dj_stats(dj_profile()$DJ, dj_years())
+      get_dj_stats(
+        dj_profile()$DJ,
+        dj_years(),
+        exclude_signature = input$exclude_signature_dj
+      )
     })
   })
 
@@ -1249,7 +1305,7 @@ server <- function(input, output, session) {
   compare_stats <- reactive({
     withProgress(message = "Processing...", {
       p <- compare_pair()
-      compare_djs(p[1], p[2])
+      compare_djs(p[1], p[2], exclude_signature = input$exclude_signature_compare)
     })
   })
 
@@ -1302,7 +1358,8 @@ server <- function(input, output, session) {
       artist_history <- quarterly_by_dj(
         artist_plays_1DJ(),
         threshold = as.numeric(input$artist_all_other_1DJ),
-        exclude_wake = input$exclude_wake_artists
+        exclude_wake = input$exclude_wake_artists,
+        exclude_signature = input$exclude_signature_artists
       )
 
       gg <- artist_history |>
@@ -1328,7 +1385,11 @@ server <- function(input, output, session) {
     bg = "black"
   )
   output$top_songs_for_artist_1DJ <- renderTable({
-    artist_top_songs(artist_plays_1DJ(), input$exclude_wake_artists)
+    artist_top_songs(
+      artist_plays_1DJ(),
+      input$exclude_wake_artists,
+      input$exclude_signature_artists
+    )
   })
   output$artist_variants <- renderTable({
     req(input$artist_selection_1DJ)
@@ -1350,7 +1411,11 @@ server <- function(input, output, session) {
     })
   })
   reactive_multi_artists <- reactive({
-    artist_yearly(artist_plays_multi(), input$exclude_wake_artists_multi)
+    artist_yearly(
+      artist_plays_multi(),
+      input$exclude_wake_artists_multi,
+      input$exclude_signature_artists_multi
+    )
   })
 
   output$artist_variants_multi <- renderTable({
@@ -1470,7 +1535,8 @@ server <- function(input, output, session) {
       song_history <- quarterly_by_dj(
         song_plays(),
         threshold = as.numeric(input$song_all_other),
-        exclude_wake = input$exclude_wake_songs
+        exclude_wake = input$exclude_wake_songs,
+        exclude_signature = input$exclude_signature_songs
       )
       gg <- song_history |>
         ggplot(aes(x = AirDate, y = Spins, fill = ShowName)) +
@@ -1499,7 +1565,11 @@ server <- function(input, output, session) {
     bg = "black"
   )
   output$top_artists_for_song <- renderTable({
-    song_top_artists(song_plays())
+    song_top_artists(
+      song_plays(),
+      exclude_wake = input$exclude_wake_songs,
+      exclude_signature = input$exclude_signature_songs
+    )
   })
 
   # ------------------- playlists TAB--------------------
@@ -1552,14 +1622,31 @@ server <- function(input, output, session) {
   output$playlist_table <- DT::renderDataTable({
     df <- playlist_data()
     if (nrow(df) == 0) {
-      df <- data.frame(Title = "No shows in this date range.")
+      return(datatable(
+        data.frame(Title = "No shows in this date range."),
+        style = "bootstrap4",
+        rownames = FALSE
+      ))
     }
+    # a character marker (rather than TRUE/FALSE) keeps the column sortable
+    # and lets users type the star into the search box
+    df$Signature <- ifelse(df$Signature, "\u2605", "")
     datatable(
       df,
       style = "bootstrap4",
       rownames = FALSE,
-      options = list(pageLength = 25, deferRender = TRUE)
-    )
+      options = list(
+        pageLength = 25,
+        deferRender = TRUE,
+        columnDefs = list(list(className = "dt-center", targets = 3))
+      )
+    ) |>
+      formatStyle(
+        c("AirDate", "Artist", "Title", "Signature"),
+        valueColumns = "Signature",
+        color = styleEqual("\u2605", "#f39c12"),
+        fontStyle = styleEqual("\u2605", "italic")
+      )
   })
 }
 # LAUNCH APP ===============================================================
