@@ -27,15 +27,7 @@ output: html_document
 
 The web scraping and data-cleaning process was the most time consuming part of the exercise. Playlist tables are not in a consistent format and my HTML skills are rudimentary. Some DJs are ommitted entirely because their playlist formats are too weird (working on it, maybe). I cleaned up the raw data to reduce errors and create consistency. DJ's are inconsistent in how they enter artist names. I take a stab at fixing some of the glaring errors. I'm sure I missed many. Additionally, many artist names are variant due to collaborators with "featuring," "and the," "with," etc. in the name. I condense the first two words of every artist name into an *ArtistToken* and drop the rest. In a very few cases the air date is clearly wrong. I strip those shows out.
 
-There is a final step which is really a judgement call. Many DJs have signature songs to open and/or close their shows. Including these skews the play count for songs. Rather than deleting them, I flag them as signature songs (see below). Identifying them is highly imperfect. Songs where one DJ accounts for just about all the plays are stripped out as well. This is the ultimate data set I use here.
-
-### Signature Songs
-
-A signature song is one a DJ plays almost every show, like an opener, a closer or a theme song. Counting every one of those plays would push them to the top of the popularity rankings, so the app leaves them out by default. You can put them back in:
-
-- The **Station**, **DJ Profile**, **Compare Two DJs**, **Single Artist**, **Multi Artist** and **Songs** tabs each have an **"Exclude Signature Songs?"** checkbox. It is ticked by default. Untick it to count signature songs too.
-- The **Playlists** tab always shows every song played. Signature songs are highlighted and marked with a ★ in the Signature column. Sort on that column, or type ★ into the search box, to list only those songs.
-- The checkbox doesn't change **Find Similar DJs**, the DJ **Similarity Index**, **Distinctive Artists** or the play counts shown while you search for a song. These are calculated ahead of time.
+Many DJs have "signature" songs to open and/or close their shows. Including these skews the play count for songs. Rather than deleting them, I flag them as signature songs and allow the user to filter them out or not. Identifying them is imperfect. Songs where one DJ accounts for just about all the plays are stripped out as well. This is the ultimate data set I use here.
 
 The end result is an reasonably accurate but incomplete record of all the playlists available at WFMU.ORG as of the last web scraping.
 
